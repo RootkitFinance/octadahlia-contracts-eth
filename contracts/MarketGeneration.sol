@@ -11,9 +11,7 @@ contract MarketGeneration {
     address public owner = msg.sender;
     
     mapping (address => uint256) public contribution;
-    mapping (address => uint256) public totalClaim;
-    mapping (address => uint256) public remainingClaim;
-    mapping (address => uint256) public claimTime;
+    mapping (address => bool) public claimed;
 
     uint256 public totalContribution;
     uint256 public startingSupply;
@@ -26,11 +24,7 @@ contract MarketGeneration {
     IUniswapV2Router02 immutable public uniswapV2Router;
 
     uint256 public totalHardCap;
-    uint256 public individualHardCap;   
-    
-    uint256 public vestingPeriodStartTime;
-    uint256 public vestingPeriodEndTime; 
-    uint256 public vestingDuration;
+    uint256 public individualHardCap;
 
     constructor(IERC20 _pairedToken, IUniswapV2Router02 _uniswapV2Router) {   
         pairedToken = _pairedToken;
@@ -45,10 +39,6 @@ contract MarketGeneration {
     modifier active() {
         require (isActive, "Distribution not active");
         _;
-    }
-
-    function setVestingDuration (uint256 _vestingDuration) public ownerOnly() {
-        vestingDuration = _vestingDuration;
     }
 
     function setHardCap(uint256 _totalHardCap, uint256 _individualHardCap) public ownerOnly() {
@@ -67,9 +57,6 @@ contract MarketGeneration {
         
         // initialize octaDahlia with pairedToken.balanceOf(address(this))
         startingSupply = octaDahlia.totalSupply();
-
-        vestingPeriodStartTime = block.timestamp;
-        vestingPeriodEndTime = block.timestamp + vestingDuration;
         distributionComplete = true;
     }
 
@@ -78,22 +65,12 @@ contract MarketGeneration {
 
         address account = msg.sender;
         uint256 amount = contribution[account];
+
         require (amount > 0, "Nothing to claim");
-        
-        if (totalClaim[account] == 0) {
-            totalClaim[account] = remainingClaim[account] = getTotalClaim(account);
-        }
+        require (!claimed[account], "Already claimed");
 
-        uint256 share = totalClaim[account];
-        uint256 endTime = vestingPeriodEndTime > block.timestamp ? block.timestamp : vestingPeriodEndTime;
-
-        require (claimTime[account] < endTime, "Already claimed");
-
-        uint256 claimStartTime = claimTime[account] == 0 ? vestingPeriodStartTime : claimTime[account];
-        share = (endTime.sub(claimStartTime)) * share / vestingDuration;
-        claimTime[account] = block.timestamp;
-        remainingClaim[account] -= share;
-        octaDahlia.transfer(account, share);
+        octaDahlia.transfer(account, getTotalClaim(account));
+        claimed[account] = true;
     }
 
     function contribute(uint256 amount) private {       
