@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: I-I-N-N-N-N-NFINITYYY!!
 pragma solidity ^0.7.6;
 
-import "./../OctaDahlia/OctaDahlia.sol";
+import "./OctaDahlia.sol";
 
 abstract contract TimeRift is MultiOwned{
 
@@ -27,21 +27,18 @@ abstract contract TimeRift is MultiOwned{
         pools[address(Dahlia)] = pool;
         Dahlia.balanceAdjustment(true, startingTokenSupply, address(pool));
         pairedToken.transferFrom(address(msg.sender), address(pool), startingLiquidity);
-        Dahlia.balanceAdjustment(true, startingTokenSupply, address(pool));
-
+        Dahlia.balanceAdjustment(true, startingTokenSupply, address(msg.sender));
+        pool.mint();
+        Dahlia.setUp(address(pool), dev6, dev9);
         return address(Dahlia);
     }
 
 
     function balancePrices(address[] calldata noncesToBalance) public ownerSOnly(){
             uint256 safeLength = noncesToBalance.length;
-            for (uint i = 0; i < lastNonce; i++) {
-
+            for (uint i = 0; i < safeLength; i++) {
+            OctaDahlia(nonces[noncesToBalance[i]]).alignPrices();
         }
-    }
-
-    function balanceMarket(uint256 _nonce) internal {
-
     }
 
     function whoNeedsBalance() public view returns (uint256[] memory) {
@@ -50,33 +47,15 @@ abstract contract TimeRift is MultiOwned{
         uint256 poolBalance;
         uint256 trueSupply;
         uint256 dif;
-        for (uint i = 1; i <= lastNonce; i++) {
+        for (uint i = 0; i <= lastNonce; i++) {
             dahlia = nonces[i];
             poolBalance = dahlia.balanceOf(address(pools[address(dahlia)]));
             trueSupply = dahlia.totalSupply() - poolBalance;
             dif = trueSupply > poolBalance ? trueSupply - poolBalance : poolBalance - trueSupply;
-            if (dif * 10000 / trueSupply > 1420) {
+            if (dif * 10000 / trueSupply > 1321) {
                 toBalance[toBalance.length + 1] = i;
             }
         }
         return toBalance;
     }
-
-    //function balanceCheck(uint256 _nonce) internal returns (bool) {
-
-    //}
-
-
-
-
-    /*
-    function getPoolPrice() public view override returns (uint256) {
-         return ( _balanceOf[address(pair)] * 1e18 / pairedToken.balanceOf(address(pair)));
-    }
-
-    function getPrice() public view override returns (uint256) {
-        return ((totalSupply - _balanceOf[address(pair)]) * 1e18 / 
-            pairedToken.balanceOf(address(pair)) + pairedToken.balanceOf(address(this)));
-    }
-    */
 }
