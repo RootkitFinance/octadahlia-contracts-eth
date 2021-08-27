@@ -3,7 +3,7 @@ pragma solidity ^0.7.6;
 
 import './IUniswapV2Router01.sol';
 
-interface IuniswapV2Router02 is IUniswapV2Router01 {
+interface IUniswapV2Router02 is IUniswapV2Router01 {
     function swapExactTokensForTokensSupportingFeeOnTransferTokens(
         uint amountIn,
         uint amountOutMin, 
