@@ -3,7 +3,7 @@ pragma solidity ^0.7.6;
 
 import "./IERC20.sol";
 
-interface IMultiOwned is IERC20 {
+interface IMultiOwned {
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     function setInitialOwners(address owner1, address owner2, address owner3) external;
     function addExtraOwners(uint256 indexSpot, address newOwner) external;

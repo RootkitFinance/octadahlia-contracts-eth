@@ -2,9 +2,9 @@
 pragma solidity ^0.7.6;
 
 import "./SafeSubtraction.sol";
-import "./MultiOwned.sol"; 
+import "./Interfaces/IERC20.sol"; 
 
-abstract contract ERC20 is MultiOwned {
+abstract contract ERC20 is IERC20 {
 
     using SafeSubtraction for uint256;
 

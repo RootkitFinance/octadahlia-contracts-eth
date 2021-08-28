@@ -2,22 +2,20 @@
 pragma solidity ^0.7.6;
 
 import "./SafeSubtraction.sol";
+import "./MultiOwned.sol";
 import "./LiquidityLockedERC20.sol";
 import "./Interfaces/IERC20.sol";
-import "./Interfaces/IUniswapV2Factory.sol";
 import "./Interfaces/IUniswapV2Pair.sol";
-import "./Interfaces/ITimeBeacon.sol";
 import "./Interfaces/IOctaDahlia.sol"; 
-import "./Interfaces/ITimeRift.sol";
 
-contract OctaDahlia is LiquidityLockedERC20 {
+contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
 
     using SafeSubtraction for uint256;
 
     IUniswapV2Pair public pair;
     address private rift;
 
-    uint256 public burnRate = 13.21; // 13.21 % burn + 3.21% fees, fee is high to cover gas cost of balance function
+    uint256 public burnRate = 1321; // 13.21 % burn + 3.21% fees, fee is high to cover gas cost of balance function
 
     constructor() {
         rift = msg.sender;
@@ -49,7 +47,7 @@ contract OctaDahlia is LiquidityLockedERC20 {
     }
 
     // set up functions
-    function setUp(IUniswapV2Pair _pair, address dev6, address dev9) external override returns(address) {
+    function setUp(IUniswapV2Pair _pair, address dev6, address dev9) external override {
         require (ownerCount == 0);
         pair = _pair;
         setInitialOwners(address(tx.origin), dev6, dev9);
@@ -58,7 +56,7 @@ contract OctaDahlia is LiquidityLockedERC20 {
     function _transfer(address sender, address recipient, uint256 amount) internal override virtual {
         require (amount < totalSupply / 100);
 
-        (uint256 dynamicBurnModifier, bool poolBalanceHigher ) = dynamicBurnRate();
+        (uint256 dynamicBurnModifier, bool poolBalanceHigher) = dynamicBurnRate();
         bool fromPair = sender == address(pair) ? true : false;
         bool toPair = recipient == address(pair) ? true : false;
 
@@ -80,7 +78,7 @@ contract OctaDahlia is LiquidityLockedERC20 {
         _balanceOf[recipient] += amount;
         emit Transfer(sender, recipient, amount);
         if (fromPair) {
-             if (poolBalanceHigher) {
+            if (poolBalanceHigher) {
                 dynamicBurnModifier = dynamicBurnModifier + 100 > burnRate ? 100 : burnRate - dynamicBurnModifier;
                 amount = _burnAndFees(sender, amount, burnRate + dynamicBurnModifier);
             }
@@ -101,7 +99,7 @@ contract OctaDahlia is LiquidityLockedERC20 {
         return (amount - burnAmount - fees);
     }
 
-    function dynamicBurnRate() internal view returns(uint256, bool poolBalanceHigher) {
+    function dynamicBurnRate() internal view returns(uint256, bool) {
         uint256 pairBalance = _balanceOf[address(pair)];
         uint256 circSupply = totalSupply - pairBalance;
         uint256 dif;
@@ -109,7 +107,7 @@ contract OctaDahlia is LiquidityLockedERC20 {
             dif = circSupply - pairBalance;
             return (dif * 10000 / circSupply, false);
         }
-        else if (pairBalance > circSupply){
+        else {
             dif = pairBalance - circSupply;
             return (dif * 10000 / circSupply, true);
         }

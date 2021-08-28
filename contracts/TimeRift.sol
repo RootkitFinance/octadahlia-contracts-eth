@@ -3,7 +3,7 @@ pragma solidity ^0.7.6;
 
 import "./OctaDahlia.sol";
 
-abstract contract TimeRift is MultiOwned{
+contract TimeRift is MultiOwned {
 
     address private dev6;
     address private dev9;
@@ -26,17 +26,16 @@ abstract contract TimeRift is MultiOwned{
         IUniswapV2Pair pool = IUniswapV2Pair(uniswapFactory.createPair(address(Dahlia), address(pairedToken)));
         pools[address(Dahlia)] = pool;
         Dahlia.balanceAdjustment(true, startingTokenSupply, address(pool));
-        pairedToken.transferFrom(address(msg.sender), address(pool), startingLiquidity);
-        Dahlia.balanceAdjustment(true, startingTokenSupply, address(msg.sender));
-        pool.mint();
-        Dahlia.setUp(address(pool), dev6, dev9);
+        pairedToken.transferFrom(msg.sender, address(pool), startingLiquidity);
+        Dahlia.balanceAdjustment(true, startingTokenSupply, msg.sender);
+        pool.mint(address(this));
+        Dahlia.setUp(pool, dev6, dev9);
         return address(Dahlia);
     }
 
-
-    function balancePrices(address[] calldata noncesToBalance) public ownerSOnly(){
-            uint256 safeLength = noncesToBalance.length;
-            for (uint i = 0; i < safeLength; i++) {
+    function balancePrices(uint256[] calldata noncesToBalance) public ownerSOnly() {
+        uint256 safeLength = noncesToBalance.length;
+        for (uint i = 0; i < safeLength; i++) {
             OctaDahlia(nonces[noncesToBalance[i]]).alignPrices();
         }
     }
@@ -53,9 +52,13 @@ abstract contract TimeRift is MultiOwned{
             trueSupply = dahlia.totalSupply() - poolBalance;
             dif = trueSupply > poolBalance ? trueSupply - poolBalance : poolBalance - trueSupply;
             if (dif * 10000 / trueSupply > 1321) {
-                toBalance[toBalance.length + 1] = i;
+                toBalance[toBalance.length] = i;
             }
         }
         return toBalance;
+    }
+
+    function recoverTokens(IERC20 token) public ownerSOnly() {
+        token.transfer(msg.sender, token.balanceOf(address(this)));
     }
 }

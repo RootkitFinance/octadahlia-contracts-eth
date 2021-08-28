@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: I-N-N-N-NFINITY!!!
 pragma solidity ^0.7.6;
 
-import "./Interfaces/IOctaDahlia.sol";
+import "./Interfaces/IMultiOwned.sol";
 
-abstract contract MultiOwned is IOctaDahlia {
+abstract contract MultiOwned is IMultiOwned {
 
     uint256 public override ownerCount; // 3 to start, up to 6 more, 9 in total
 
