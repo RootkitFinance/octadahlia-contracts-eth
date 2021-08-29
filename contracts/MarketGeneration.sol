@@ -3,6 +3,7 @@ pragma solidity ^0.7.6;
 
 import "./Interfaces/IUniswapV2Router02.sol";
 import "./Interfaces/IERC20.sol";
+import "./Interfaces/ITimeRift.sol";
 import "./SafeSubtraction.sol";
 
 contract MarketGeneration {
@@ -22,13 +23,15 @@ contract MarketGeneration {
     IERC20 public immutable pairedToken;
     IERC20 public octaDahlia;
     IUniswapV2Router02 immutable public uniswapV2Router;
+    ITimeRift immutable public timeRift;
 
     uint256 public totalHardCap;
     uint256 public individualHardCap;
 
-    constructor(IERC20 _pairedToken, IUniswapV2Router02 _uniswapV2Router) {   
+    constructor(IERC20 _pairedToken, IUniswapV2Router02 _uniswapV2Router, ITimeRift _timeRift) {   
         pairedToken = _pairedToken;
         uniswapV2Router = _uniswapV2Router;
+        timeRift = _timeRift;
     }
 
     modifier ownerOnly() {
@@ -51,12 +54,13 @@ contract MarketGeneration {
         isActive = true;
     }
 
-    function complete() public ownerOnly() active() {
+    function complete(uint256 octaDalhiaPerPaired) public ownerOnly() active() { // if octaDalhiaPerPaired is 100, 100 octaDalhias are minted per 1 paired token
         isActive = false;
         if (totalContribution == 0) { return; }
         
-        // initialize octaDahlia with pairedToken.balanceOf(address(this))
-        startingSupply = octaDahlia.totalSupply();
+        startingSupply = totalContribution * octaDalhiaPerPaired;
+        pairedToken.approve(address(timeRift), totalContribution);
+        octaDahlia = IERC20(timeRift.OctaDahliaGrowsBrighter(pairedToken, totalContribution, startingSupply));
         distributionComplete = true;
     }
 

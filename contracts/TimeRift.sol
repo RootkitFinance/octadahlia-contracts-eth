@@ -2,8 +2,9 @@
 pragma solidity ^0.7.6;
 
 import "./OctaDahlia.sol";
+import "./Interfaces/ITimeRift.sol";
 
-contract TimeRift is MultiOwned {
+contract TimeRift is MultiOwned, ITimeRift {
 
     address private dev6;
     address private dev9;
@@ -19,7 +20,7 @@ contract TimeRift is MultiOwned {
         uniswapFactory = _uniswapFactory;
     }
 
-    function OctaDahliaGrowsBrighter(IERC20 pairedToken, uint256 startingLiquidity, uint256 startingTokenSupply) public returns (address) {
+    function OctaDahliaGrowsBrighter(IERC20 pairedToken, uint256 startingLiquidity, uint256 startingTokenSupply) public override returns (address) {
         OctaDahlia Dahlia = new OctaDahlia();
         lastNonce++;
         nonces[lastNonce] = Dahlia;
