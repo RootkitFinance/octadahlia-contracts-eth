@@ -13,11 +13,17 @@ contract TimeRift is MultiOwned, ITimeRift {
     uint256 public lastNonce;
     mapping (uint256 => OctaDahlia) public nonces; // nonce -> flower
     mapping (address => IUniswapV2Pair) public pools; // flower -> pool
+    mapping (address => bool) public MGEs; // MGE Contract -> y/n
 
     constructor(address _dev6, address _dev9, IUniswapV2Factory _uniswapFactory) { 
         dev6 = _dev6;
         dev9 = _dev9;
         uniswapFactory = _uniswapFactory;
+    }
+
+    // Enable mint and burn for Market Generation Contracts that launch upOnly tokens
+    function enableMgeContract(address _mge, bool _enable) public ownerSOnly() {
+        MGEs[_mge] = _enable;
     }
 
     function OctaDahliaGrowsBrighter(IERC20 pairedToken, uint256 startingLiquidity, uint256 startingTokenSupply) public override returns (address) {
@@ -30,7 +36,8 @@ contract TimeRift is MultiOwned, ITimeRift {
         pairedToken.transferFrom(msg.sender, address(pool), startingLiquidity);
         Dahlia.balanceAdjustment(true, startingTokenSupply, msg.sender);
         pool.mint(address(this));
-        Dahlia.setUp(pool, dev6, dev9);
+        address mge = MGEs[msg.sender] == true ? msg.sender : address(0);
+        Dahlia.setUp(pool, dev6, dev9, mge);
         return address(Dahlia);
     }
 

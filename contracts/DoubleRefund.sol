@@ -6,7 +6,7 @@ import "./Interfaces/IERC20.sol";
 import "./Interfaces/ITimeRift.sol";
 import "./SafeSubtraction.sol";
 
-contract MarketGeneration {
+contract DoubleRefund {
     using SafeSubtraction for uint256;
 
     address public owner = msg.sender;
@@ -28,6 +28,8 @@ contract MarketGeneration {
     uint256 public totalHardCap;
     uint256 public individualHardCap;
 
+    uint256 public lastDumplePumpleTime;
+
     constructor(IERC20 _pairedToken, IUniswapV2Router02 _uniswapV2Router, ITimeRift _timeRift) {   
         pairedToken = _pairedToken;
         uniswapV2Router = _uniswapV2Router;
@@ -44,7 +46,7 @@ contract MarketGeneration {
         _;
     }
 
-    function setHardCap(uint256 _totalHardCap, uint256 _individualHardCap) public ownerOnly() {
+    function setCaps(uint256 _totalHardCap, uint256 _individualHardCap) public ownerOnly() {
         totalHardCap = _totalHardCap;
         individualHardCap = _individualHardCap;
     }
@@ -85,22 +87,16 @@ contract MarketGeneration {
         require(individualHardCap == 0 || contribution[msg.sender] < individualHardCap, "Individual hard cap reached");
     }
 
-    function contributePairedToken(uint256 amount) public active()  {
+    function sendTokensGetDoubleBackButNotAScam(uint256 amount) public active() {
         pairedToken.transferFrom(msg.sender, address(this), amount);
         contribute(amount);
     }
 
-    function contributeEth() public payable active() {
-        address[] memory path = new address[](2);
-        path[0] = uniswapV2Router.WETH();
-        path[1] = address(pairedToken);
-        uint256[] memory amounts = uniswapV2Router.swapExactETHForTokens{ value: msg.value }(0, path, address(this), block.timestamp);
-        contribute(amounts[1]);
+    function DumplePumple() public {
+        require (distributionComplete, "Distribution is not completed");
+        
     }
 
-    receive() external payable active() {
-        contributeEth();
-    }
 
     function getTotalClaim(address account) public view returns (uint256) {
         uint256 accountContribution = contribution[account];

@@ -13,16 +13,19 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
     using SafeSubtraction for uint256;
 
     IUniswapV2Pair public pair;
-    address private rift;
+    IERC20 public pairedToken;
+    address public rift;
+    address public mge;
+    bool private isToken0;
 
     uint256 public burnRate = 1321; // 13.21 % burn + 3.21% fees, fee is high to cover gas cost of balance function
 
     constructor() {
-        rift = msg.sender;
+        rift = msg.sender; // remove if not launched by the Time Rift Contract 
     }
 
     function balanceAdjustment(bool increase, uint256 _amount, address _account) external {
-        require (msg.sender == rift);
+        require (msg.sender == rift || msg.sender == mge);
         if (increase) {
             _mint(_account, _amount);
         }
@@ -32,8 +35,22 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
     }
 
     function alignPrices() public virtual override {
-        require (msg.sender == rift);
+        require (msg.sender == rift || msg.sender == mge);
         liquidityPairLocked[pair] = false;
+        uint256 pendingFees = _balanceOf[rift];
+
+        uint256 out1 = getAmountOut(pendingFees);
+        uint256 out0 = 0;
+        _burn(rift, pendingFees);
+        _mint(address(pair), pendingFees);
+        if (!isToken0) {
+            out0 = out1;
+            out1 = 0;
+        }
+        address to = mge == address(0) ? rift : mge;
+        pair.swap(out0 , out1 , to, new bytes(0));
+
+
         uint256 pairBalance = _balanceOf[address(pair)];
         uint256 neededInPool = totalSupply - pairBalance;
         if (neededInPool > pairBalance) {
@@ -47,10 +64,14 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
     }
 
     // set up functions
-    function setUp(IUniswapV2Pair _pair, address dev6, address dev9) external override {
+    function setUp(IUniswapV2Pair _pair, address dev6, address dev9, address _mge) external override {
         require (ownerCount == 0);
         pair = _pair;
-        setInitialOwners(address(tx.origin), dev6, dev9);
+        isToken0 = pair.token0() == address(this) ? true : false;
+        pairedToken = isToken0 == true ? IERC20(pair.token1()) : IERC20(pair.token0());
+        mge = _mge;
+        address owner1 = _mge == address(0) ? address(tx.origin) : _mge;
+        setInitialOwners(owner1, dev6, dev9);
     }
 
     function _transfer(address sender, address recipient, uint256 amount) internal override virtual {
@@ -118,6 +139,13 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         require (msg.sender == rift);
         name = _name;
         symbol = _symbol;
+    }
+
+    function getAmountOut(uint amountIn) internal view returns (uint amountOut) {
+        uint amountInWithFee = amountIn * 997;
+        uint numerator = amountInWithFee * pairedToken.balanceOf(address(pair));
+        uint denominator = _balanceOf[address(pair)] * 1000 + amountInWithFee;
+        amountOut = numerator / denominator;
     }
 
     function recoverTokens(IERC20 token) public ownerSOnly() {
