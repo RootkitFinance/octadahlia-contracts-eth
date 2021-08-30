@@ -73,10 +73,7 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
                 amount = _burnAndFees(sender, amount, burnRate + dynamicBurnModifier);
             }
         }
-
-        _balanceOf[sender] = _balanceOf[sender].sub(amount, "OcDa: low balance");
-        _balanceOf[recipient] += amount;
-        emit Transfer(sender, recipient, amount);
+        
         if (fromPair) {
             if (poolBalanceHigher) {
                 dynamicBurnModifier = dynamicBurnModifier + 100 > burnRate ? 100 : burnRate - dynamicBurnModifier;
@@ -86,6 +83,10 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
                 amount = _burnAndFees(sender, amount, burnRate + dynamicBurnModifier);
             }
         }
+
+        _balanceOf[sender] = _balanceOf[sender].sub(amount, "OcDa: low balance");
+        _balanceOf[recipient] += amount;
+        emit Transfer(sender, recipient, amount);
     }
 
     function _burnAndFees(address account, uint256 amount, uint256 burnPercent) internal returns(uint256) {
