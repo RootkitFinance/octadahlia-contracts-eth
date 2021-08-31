@@ -49,18 +49,19 @@ contract TimeRift is MultiOwned, ITimeRift {
     }
 
     function whoNeedsBalance() public view returns (uint256[] memory) {
-        uint256[] memory toBalance;
+        uint256[] memory toBalance = new uint256[](lastNonce);
         OctaDahlia dahlia;
         uint256 poolBalance;
         uint256 trueSupply;
         uint256 dif;
-        for (uint i = 0; i <= lastNonce; i++) {
+        uint256 count = 0;
+        for (uint256 i = 1; i <= lastNonce; i++) {
             dahlia = nonces[i];
             poolBalance = dahlia.balanceOf(address(pools[address(dahlia)]));
             trueSupply = dahlia.totalSupply() - poolBalance;
             dif = trueSupply > poolBalance ? trueSupply - poolBalance : poolBalance - trueSupply;
             if (dif * 10000 / trueSupply > 1321) {
-                toBalance[toBalance.length] = i;
+                toBalance[count++] = i;
             }
         }
         return toBalance;

@@ -92,10 +92,10 @@ contract DoubleRefund {
         contribute(amount);
     }
 
-    function DumplePumple() public {
-        require (distributionComplete, "Distribution is not completed");
+    // function DumplePumple() public {
+    //     require (distributionComplete, "Distribution is not completed");
         
-    }
+    // }
 
 
     function getTotalClaim(address account) public view returns (uint256) {

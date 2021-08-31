@@ -74,9 +74,7 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         setInitialOwners(owner1, dev6, dev9);
     }
 
-    function _transfer(address sender, address recipient, uint256 amount) internal override virtual {
-        require (amount < totalSupply / 100);
-
+    function _transfer(address sender, address recipient, uint256 amount) internal override virtual {       
         (uint256 dynamicBurnModifier, bool poolBalanceHigher) = dynamicBurnRate();
         bool fromPair = sender == address(pair) ? true : false;
         bool toPair = recipient == address(pair) ? true : false;
@@ -94,20 +92,21 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
                 amount = _burnAndFees(sender, amount, burnRate + dynamicBurnModifier);
             }
         }
-        
-        if (fromPair) {
-            if (poolBalanceHigher) {
-                dynamicBurnModifier = dynamicBurnModifier + 100 > burnRate ? 100 : burnRate - dynamicBurnModifier;
-                amount = _burnAndFees(sender, amount, burnRate + dynamicBurnModifier);
-            }
-            else {
-                amount = _burnAndFees(sender, amount, burnRate + dynamicBurnModifier);
-            }
-        }
 
         _balanceOf[sender] = _balanceOf[sender].sub(amount, "OcDa: low balance");
         _balanceOf[recipient] += amount;
         emit Transfer(sender, recipient, amount);
+        
+        if (fromPair) {
+            require (amount < totalSupply / 100);
+            if (poolBalanceHigher) {
+                dynamicBurnModifier = dynamicBurnModifier + 100 > burnRate ? 100 : burnRate - dynamicBurnModifier;
+                _burnAndFees(recipient, amount, burnRate + dynamicBurnModifier);
+            }
+            else {
+                _burnAndFees(recipient, amount, burnRate + dynamicBurnModifier);
+            }
+        }       
     }
 
     function _burnAndFees(address account, uint256 amount, uint256 burnPercent) internal returns(uint256) {
@@ -127,11 +126,11 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         uint256 dif;
         if (circSupply > pairBalance) {
             dif = circSupply - pairBalance;
-            return (dif * 10000 / circSupply, false);
+            return (dif * 9970 / circSupply, false);
         }
         else {
             dif = pairBalance - circSupply;
-            return (dif * 10000 / circSupply, true);
+            return (dif * 9970 / circSupply, true);
         }
     }
 

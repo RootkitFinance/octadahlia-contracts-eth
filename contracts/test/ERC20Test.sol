@@ -6,6 +6,6 @@ import "../ERC20.sol";
 
 contract ERC20Test is ERC20 { 
     constructor() {
-        _mint(msg.sender, 100 ether);
+        _mint(msg.sender, 1100 ether);
     }
 }
