@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: I-N-N-N-NFINITY!!!
 pragma solidity ^0.7.6;
 
-import "./Interfaces/IUniswapV2Router02.sol";
+import "./Interfaces/IWETH.sol";
 import "./Interfaces/IERC20.sol";
 import "./Interfaces/ITimeRift.sol";
 import "./SafeSubtraction.sol";
@@ -22,15 +22,13 @@ contract MarketGeneration {
 
     IERC20 public immutable pairedToken;
     IERC20 public octaDahlia;
-    IUniswapV2Router02 immutable public uniswapV2Router;
     ITimeRift immutable public timeRift;
 
     uint256 public totalHardCap;
     uint256 public individualHardCap;
 
-    constructor(IERC20 _pairedToken, IUniswapV2Router02 _uniswapV2Router, ITimeRift _timeRift) {   
+    constructor(IERC20 _pairedToken, ITimeRift _timeRift) {   
         pairedToken = _pairedToken;
-        uniswapV2Router = _uniswapV2Router;
         timeRift = _timeRift;
     }
 
@@ -58,9 +56,11 @@ contract MarketGeneration {
         isActive = false;
         if (totalContribution == 0) { return; }
         
-        startingSupply = totalContribution * octaDalhiaPerPaired;
-        pairedToken.approve(address(timeRift), uint(-1));
-        octaDahlia = IERC20(timeRift.OctaDahliaGrowsBrighter(pairedToken, pairedToken.balanceOf(address(this)), startingSupply));
+        uint256 balance = address(this).balance;
+        IWETH(address(pairedToken)).deposit{ value: balance }();
+        startingSupply = balance * octaDalhiaPerPaired;
+        pairedToken.approve(address(timeRift), uint256(-1));
+        octaDahlia = IERC20(timeRift.OctaDahliaGrowsBrighter(pairedToken, balance, startingSupply));
         distributionComplete = true;
     }
 
@@ -77,29 +77,17 @@ contract MarketGeneration {
         claimed[account] = true;
     }
 
-    function contribute(uint256 amount) private { 
+    function contribute() public payable active() {
+        uint256 amount = msg.value;
         contribution[msg.sender] += amount;
         totalContribution += amount;
 
         require(totalHardCap == 0 || totalContribution < totalHardCap, "Total hard cap reached");
         require(individualHardCap == 0 || contribution[msg.sender] < individualHardCap, "Individual hard cap reached");
-    }
-
-    function contributePairedToken(uint256 amount) public active()  {
-        pairedToken.transferFrom(msg.sender, address(this), amount);
-        contribute(amount);
-    }
-
-    function contributeEth() public payable active() {
-        address[] memory path = new address[](2);
-        path[0] = uniswapV2Router.WETH();
-        path[1] = address(pairedToken);
-        uint256[] memory amounts = uniswapV2Router.swapExactETHForTokens{ value: msg.value }(0, path, address(this), block.timestamp);
-        contribute(amounts[1]);
-    }
+    }    
 
     receive() external payable active() {
-        contributeEth();
+        contribute();
     }
 
     function getTotalClaim(address account) public view returns (uint256) {
