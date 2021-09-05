@@ -21,7 +21,7 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
     uint256 public burnRate = 1321; // 13.21 % burn + 3.21% fees, fee is high to cover gas cost of balance function
 
     constructor() {
-        rift = msg.sender; // remove if not launched by the Time Rift Contract 
+        rift = msg.sender; // remove if not launched by the Time Rift Contract
     }
 
     function balanceAdjustment(bool increase, uint256 _amount, address _account) external {
@@ -75,7 +75,7 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
     }
 
     function _transfer(address sender, address recipient, uint256 amount) internal override virtual {       
-        (uint256 dynamicBurnModifier, bool poolPriceHigher) = dynamicBurnRate();
+        (uint256 dynamicBurnModifier, bool poolBalanceHigher) = dynamicBurnRate();
         bool buy = sender == address(pair) ? true : false;
         bool sell = recipient == address(pair) ? true : false;
 
@@ -84,12 +84,12 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         }
 
         if (sell) {
-            if (poolPriceHigher) {
+            if (poolBalanceHigher) {
                 amount = _burnAndFees(sender, amount, burnRate + dynamicBurnModifier);
             }
             else {
                 dynamicBurnModifier = dynamicBurnModifier + 100 > burnRate ? 100 : burnRate - dynamicBurnModifier;
-                amount = _burnAndFees(sender, amount, burnRate + dynamicBurnModifier);
+                amount = _burnAndFees(sender, amount, dynamicBurnModifier);
             }
         }
 
@@ -99,9 +99,9 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         
         if (buy) {
             require (amount < totalSupply / 100);
-            if (poolPriceHigher) {
+            if (poolBalanceHigher) {
                 dynamicBurnModifier = dynamicBurnModifier + 100 > burnRate ? 100 : burnRate - dynamicBurnModifier;
-                _burnAndFees(recipient, amount, burnRate + dynamicBurnModifier);
+                _burnAndFees(recipient, amount, dynamicBurnModifier);
             }
             else {
                 _burnAndFees(recipient, amount, burnRate + dynamicBurnModifier);
@@ -126,11 +126,11 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         uint256 dif;
         if (circSupply > pairBalance) {
             dif = circSupply - pairBalance;
-            return (dif * 10000 / circSupply, true);
+            return (dif * 9970 / circSupply, false);
         }
         else {
             dif = pairBalance - circSupply;
-            return (dif * 10000 / circSupply, false);
+            return (dif * 9970 / circSupply, true);
         }
     }
 
