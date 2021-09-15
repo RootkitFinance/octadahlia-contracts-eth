@@ -39,7 +39,6 @@ abstract contract ERC20 is IERC20 {
     }
 
     function _transfer(address sender, address recipient, uint256 amount) internal virtual {
-        _beforeTokenTransfer(sender, recipient, amount);
         _balanceOf[sender] = _balanceOf[sender].sub(amount, "ERC20: low balance");
         _balanceOf[recipient] += amount;
         emit Transfer(sender, recipient, amount);
@@ -66,5 +65,4 @@ abstract contract ERC20 is IERC20 {
         _burn(msg.sender, tokenAmounts); 
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual { }
 }

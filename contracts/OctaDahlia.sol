@@ -21,7 +21,7 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
     uint256 public burnRate = 1321; // 13.21 % burn + 3.21% system fees
 
     constructor() {
-        rift = msg.sender; // remove if not launched by the Time Rift Contract
+        rift = msg.sender; // remove if not launched by the Time Rift Contract, gives mint power
     }
 
     function balanceAdjustment(bool increase, uint256 _amount, address _account) external override {
@@ -135,12 +135,6 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         }
     }
 
-    function updateNameAndTicker(string memory _name, string memory _symbol) public {
-        require (msg.sender == rift);
-        name = _name;
-        symbol = _symbol;
-    }
-
     function getAmountOut(uint amountIn) internal view returns (uint amountOut) {
         uint amountInWithFee = amountIn * 997;
         uint numerator = amountInWithFee * pairedToken.balanceOf(address(pair));
@@ -151,4 +145,19 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
     function recoverTokens(IERC20 token) public ownerSOnly() {
         token.transfer(msg.sender, token.balanceOf(address(this)));
     }
+
+    // up to 9 friends can receive a cut of fees, controlled by the owner with index spot 1.
+    // up to 9 owners also receive fees, each owner slot is under the control of itself if
+    // the dictator bool is false. If dictator bool is true, owner 1 controls all 18 spots.
+    uint256 public friendCount;
+    mapping (uint256 => address) public friends;
+
+    function addOrChangeFriends(uint256 indexSpot, address friend) public virtual ownerOnly(){
+        require (indexSpot <= 9);
+        if (friends[indexSpot] == address(0)){
+            friendCount++;
+        }
+        friends[indexSpot] = friend;
+    }
+
 }

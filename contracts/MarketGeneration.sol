@@ -60,7 +60,7 @@ contract MarketGeneration {
         IWETH(address(pairedToken)).deposit{ value: balance }();
         startingSupply = balance * octaDalhiaPerPaired;
         pairedToken.approve(address(timeRift), uint256(-1));
-        octaDahlia = IERC20(timeRift.OctaDahliaGrowsBrighter(pairedToken, balance, startingSupply));
+        octaDahlia = IERC20(timeRift.OctaDahliaGrowsBrighter(pairedToken, balance, startingSupply, false));
         distributionComplete = true;
     }
 

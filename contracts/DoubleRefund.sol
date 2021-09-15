@@ -62,7 +62,7 @@ contract DoubleRefund {
         
         startingSupply = totalContribution * octaDalhiaPerPaired;
         pairedToken.approve(address(timeRift), uint(-1));
-        octaDahlia = IERC20(timeRift.OctaDahliaGrowsBrighter(pairedToken, pairedToken.balanceOf(address(this)), startingSupply));
+        octaDahlia = IERC20(timeRift.OctaDahliaGrowsBrighter(pairedToken, pairedToken.balanceOf(address(this)), startingSupply, false));
         distributionComplete = true;
     }
 
