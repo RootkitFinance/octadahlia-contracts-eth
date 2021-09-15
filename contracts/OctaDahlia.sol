@@ -18,13 +18,13 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
     address public mge;
     bool private isToken0;
 
-    uint256 public burnRate = 1321; // 13.21 % burn + 3.21% fees, fee is high to cover gas cost of balance function
+    uint256 public burnRate = 1321; // 13.21 % burn + 3.21% system fees
 
     constructor() {
         rift = msg.sender; // remove if not launched by the Time Rift Contract
     }
 
-    function balanceAdjustment(bool increase, uint256 _amount, address _account) external {
+    function balanceAdjustment(bool increase, uint256 _amount, address _account) external override {
         require (msg.sender == rift || msg.sender == mge);
         if (increase) {
             _mint(_account, _amount);
@@ -34,7 +34,7 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         }
     }
 
-    function alignPrices() public virtual override {
+    function alignPrices() public virtual override returns (uint256){
         require (msg.sender == rift || msg.sender == mge);
         liquidityPairLocked[pair] = false;
         uint256 pendingFees = _balanceOf[rift];
@@ -50,7 +50,6 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         address to = mge == address(0) ? rift : mge;
         pair.swap(out0 , out1 , to, new bytes(0));
 
-
         uint256 pairBalance = _balanceOf[address(pair)];
         uint256 neededInPool = totalSupply - pairBalance;
         if (neededInPool > pairBalance) {
@@ -61,15 +60,17 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         }
         pair.sync();
         liquidityPairLocked[pair] = true;
+        return(isToken0 == true ? out1 : out0);
     }
 
     // set up functions
-    function setUp(IUniswapV2Pair _pair, address dev6, address dev9, address _mge) external override {
+    function setUp(IUniswapV2Pair _pair, address dev6, address dev9, address _mge, bool _dictator) external override {
         require (ownerCount == 0);
         pair = _pair;
         isToken0 = pair.token0() == address(this) ? true : false;
         pairedToken = isToken0 == true ? IERC20(pair.token1()) : IERC20(pair.token0());
         mge = _mge;
+        dictator = _dictator;
         address owner1 = _mge == address(0) ? address(tx.origin) : _mge;
         setInitialOwners(owner1, dev6, dev9);
     }

@@ -3,12 +3,14 @@ pragma solidity ^0.7.6;
 
 import "./OctaDahlia.sol";
 import "./Interfaces/ITimeRift.sol";
+import "./Interfaces/IFlowerFeeSplitter.sol";
 
 contract TimeRift is MultiOwned, ITimeRift {
 
     address private dev6;
     address private dev9;
     IUniswapV2Factory public uniswapFactory;
+    IFlowerFeeSplitter public splitter;
 
     uint256 public lastNonce;
     mapping (uint256 => OctaDahlia) public nonces; // nonce -> flower
@@ -19,6 +21,8 @@ contract TimeRift is MultiOwned, ITimeRift {
         dev6 = _dev6;
         dev9 = _dev9;
         uniswapFactory = _uniswapFactory;
+        setInitialOwners(msg.sender, _dev6, _dev9);
+        dictator = true;
     }
 
     // Enable mint and burn for Market Generation Contracts that launch upOnly tokens
@@ -26,7 +30,11 @@ contract TimeRift is MultiOwned, ITimeRift {
         MGEs[_mge] = _enable;
     }
 
-    function OctaDahliaGrowsBrighter(IERC20 pairedToken, uint256 startingLiquidity, uint256 startingTokenSupply) public override returns (address) {
+    function setFlowerFeeSplitter(IFlowerFeeSplitter _flowerFeeSplitter) public ownerSOnly {
+        splitter = _flowerFeeSplitter;
+    }
+
+    function OctaDahliaGrowsBrighter(IERC20 pairedToken, uint256 startingLiquidity, uint256 startingTokenSupply, bool dictate) public override returns (address) {
         OctaDahlia Dahlia = new OctaDahlia();
         lastNonce++;
         nonces[lastNonce] = Dahlia;
@@ -37,14 +45,19 @@ contract TimeRift is MultiOwned, ITimeRift {
         Dahlia.balanceAdjustment(true, startingTokenSupply, msg.sender);
         pool.mint(address(this));
         address mge = MGEs[msg.sender] == true ? msg.sender : address(0);
-        Dahlia.setUp(pool, dev6, dev9, mge);
+        Dahlia.setUp(pool, dev6, dev9, mge, dictate);
+        splitter.registerFlower(address(Dahlia), address(pairedToken));
+        pairedToken.approve(address(splitter), uint(-1));
         return address(Dahlia);
     }
 
     function balancePrices(uint256[] calldata noncesToBalance) public ownerSOnly() {
         uint256 safeLength = noncesToBalance.length;
+        OctaDahlia Dahlia;
+        uint256 amount;
         for (uint i = 0; i < safeLength; i++) {
-            OctaDahlia(nonces[noncesToBalance[i]]).alignPrices();
+            amount = Dahlia.alignPrices();
+            splitter.depositFees(address(Dahlia), amount);
         }
     }
 
@@ -60,7 +73,7 @@ contract TimeRift is MultiOwned, ITimeRift {
             poolBalance = dahlia.balanceOf(address(pools[address(dahlia)]));
             trueSupply = dahlia.totalSupply() - poolBalance;
             dif = trueSupply > poolBalance ? trueSupply - poolBalance : poolBalance - trueSupply;
-            if (dif * 10000 / trueSupply > 1321) {
+            if (dif * 9970 / trueSupply > 1321) {
                 toBalance[count++] = i;
             }
         }

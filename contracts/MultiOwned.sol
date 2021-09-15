@@ -10,6 +10,7 @@ abstract contract MultiOwned is IMultiOwned {
     mapping (uint256 => address) public override owners;
     mapping (address => uint256) public override ownerIndex; 
     address public pendingOwner;
+    bool public dictator;
 
     modifier ownerSOnly() {
         require (ownerIndex[msg.sender] != 0, "Owners only");
@@ -17,7 +18,7 @@ abstract contract MultiOwned is IMultiOwned {
     }
 
     modifier ownerOnly() {
-        require (ownerIndex[msg.sender] == 1, "Owners only");
+        require (ownerIndex[msg.sender] == 1, "Owner 1 only");
         _;
     }
 
@@ -39,7 +40,6 @@ abstract contract MultiOwned is IMultiOwned {
             ownerIndex[newOwner] = index;
             emit OwnershipTransferred(oldOwner, newOwner);
         }
-        
     }
 
     function claimOwnership() public virtual override {
@@ -64,10 +64,21 @@ abstract contract MultiOwned is IMultiOwned {
     }
 
     function addExtraOwners(uint256 indexSpot, address newOwner) public virtual override ownerOnly(){
-        require (owners[indexSpot] == address(0));
-        ownerCount++;
-        require (ownerCount <= 9);
-        owners[indexSpot] = newOwner;
-        ownerIndex[newOwner] = indexSpot;
+        if (dictator == false) {
+            require (owners[indexSpot] == address(0));
+            ownerCount++;
+            require (ownerCount < 9);
+            owners[indexSpot] = newOwner;
+            ownerIndex[newOwner] = indexSpot;
+            emit OwnershipTransferred(address(0), newOwner);
+        }
+        else {
+            address oldOwner =  owners[indexSpot];
+            ownerIndex[oldOwner] = 0;
+            require (ownerIndex[newOwner] == 0, "1 owner slot per address");
+            owners[indexSpot] = newOwner;
+            ownerIndex[newOwner] = indexSpot;
+            emit OwnershipTransferred(oldOwner, newOwner);
+        }
     }
 }
