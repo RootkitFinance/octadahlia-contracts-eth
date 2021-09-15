@@ -57,7 +57,9 @@ contract TimeRift is MultiOwned, ITimeRift {
         uint256 amount;
         for (uint i = 0; i < safeLength; i++) {
             amount = Dahlia.alignPrices();
-            splitter.depositFees(address(Dahlia), amount);
+            if (Dahlia.mge() == address(0)) {
+                splitter.depositFees(address(Dahlia), amount);
+            }
         }
     }
 
