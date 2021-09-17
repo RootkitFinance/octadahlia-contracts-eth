@@ -10,6 +10,10 @@ contract FlowerFeeSplitter is MultiOwned, IFlowerFeeSplitter {
 
     mapping (address => IERC20) public pairedTokens; // flower => paired
     mapping (address => uint256) public collectedFees;
+    
+    constructor() {
+        dictator = true;
+    }
 
     function registerFlower(address flower, address pairedToken) ownerSOnly() public override {
         pairedTokens[flower] = IERC20(pairedToken);
