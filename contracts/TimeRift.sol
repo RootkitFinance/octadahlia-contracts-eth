@@ -56,6 +56,7 @@ contract TimeRift is MultiOwned, ITimeRift {
         OctaDahlia Dahlia;
         uint256 amount;
         for (uint i = 0; i < safeLength; i++) {
+            Dahlia = nonces[noncesToBalance[i]];
             amount = Dahlia.alignPrices();
             if (Dahlia.mge() == address(0)) {
                 splitter.depositFees(address(Dahlia), amount);
