@@ -6,28 +6,27 @@ import "./Interfaces/ITimeRiftKeepers.sol";
 
 contract OctaDahliaKeepers is KeeperCompatibleInterface {
     ITimeRiftKeepers public timeRift;
-    uint256[] public lastData;
     
     constructor(ITimeRiftKeepers rift) {
       timeRift = rift;
     }
 
     function checkUpkeep(bytes calldata /* checkData */) external override returns (bool upkeepNeeded, bytes memory performData) {
-        uint256[] memory data = timeRift.whoNeedsBalance();
-        if(data.length > 0){
+        uint256[] memory whoNeedsBalance = timeRift.whoNeedsBalance();
+        if(whoNeedsBalance.length > 0){
             
-            uint256 check=0;
-            for(uint256 i = 0; i < data.length; i++){
-                if(data[i] != 0){
+            uint256 check = 0;
+            for(uint256 i = 0; i < whoNeedsBalance.length; i++){
+                if(whoNeedsBalance[i] != 0){
                     check++;
                 }
             }
             
             uint256[] memory newData = new uint256[](check);
             uint256 filterArrayCount = 0;
-            for(uint256 i = 0; i < data.length; i++){
-                if(data[i] != 0){
-                    newData[filterArrayCount] = data[i];
+            for(uint256 i = 0; i < whoNeedsBalance.length; i++){
+                if(whoNeedsBalance[i] != 0){
+                    newData[filterArrayCount] = whoNeedsBalance[i];
                     filterArrayCount++;                    
                 }
             }
@@ -43,8 +42,8 @@ contract OctaDahliaKeepers is KeeperCompatibleInterface {
     }
 
     function performUpkeep(bytes calldata performData) external override {
-        uint256[] memory dat = abi.decode(performData, (uint256[]));
-        timeRift.balancePrices(dat);
+        uint256[] memory noncesToBalance = abi.decode(performData, (uint256[]));
+        timeRift.balancePrices(noncesToBalance);
     }   
     
 }
