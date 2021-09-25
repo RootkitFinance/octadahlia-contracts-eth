@@ -51,7 +51,7 @@ contract TimeRift is MultiOwned, ITimeRift {
         return address(Dahlia);
     }
 
-    function balancePrices(uint256[] calldata noncesToBalance) public ownerSOnly() {
+    function balancePrices(uint256[] memory noncesToBalance) public ownerSOnly() {
         uint256 safeLength = noncesToBalance.length;
         OctaDahlia Dahlia;
         uint256 amount;
