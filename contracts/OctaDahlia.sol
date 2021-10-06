@@ -60,15 +60,15 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         }
         pair.sync();
         liquidityPairLocked[pair] = true;
-        return(isToken0 == true ? out1 : out0);
+        return isToken0 ? out1 : out0;
     }
-
+ 
     // set up functions
     function setUp(IUniswapV2Pair _pair, address dev6, address dev9, address _mge, bool _dictator) external override {
         require (ownerCount == 0);
         pair = _pair;
-        isToken0 = pair.token0() == address(this) ? true : false;
-        pairedToken = isToken0 == true ? IERC20(pair.token1()) : IERC20(pair.token0());
+        isToken0 = pair.token0() == address(this);
+        pairedToken = isToken0 ? IERC20(pair.token1()) : IERC20(pair.token0());
         mge = _mge;
         dictator = _dictator;
         address owner1 = _mge == address(0) ? address(tx.origin) : _mge;
@@ -77,8 +77,8 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
 
     function _transfer(address sender, address recipient, uint256 amount) internal override virtual {       
         (uint256 dynamicBurnModifier, bool poolPriceHigher) = dynamicBurnRate();
-        bool buy = sender == address(pair) ? true : false;
-        bool sell = recipient == address(pair) ? true : false;
+        bool buy = sender == address(pair);
+        bool sell = recipient == address(pair);
 
         if (!buy && !sell) {
             amount = _burnAndFees(sender, amount, burnRate);
@@ -159,5 +159,4 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         }
         friends[indexSpot] = friend;
     }
-
 }
