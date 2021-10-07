@@ -44,7 +44,7 @@ contract TimeRift is MultiOwned, ITimeRift {
         pairedToken.transferFrom(msg.sender, address(pool), startingLiquidity);
         Dahlia.balanceAdjustment(true, startingTokenSupply, msg.sender);
         pool.mint(address(this));
-        address mge = MGEs[msg.sender] == true ? msg.sender : address(0);
+        address mge = MGEs[msg.sender] ? msg.sender : address(0);
         Dahlia.setUp(pool, dev6, dev9, mge, dictate);
         splitter.registerFlower(address(Dahlia), address(pairedToken));
         pairedToken.approve(address(splitter), uint(-1));
