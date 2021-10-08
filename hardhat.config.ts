@@ -1,12 +1,12 @@
 import '@typechain/hardhat';
-import { task } from "hardhat/config";
+import { HardhatUserConfig, task } from "hardhat/config";
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-waffle";
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
-export default {
+const config: HardhatUserConfig =  {
   solidity: "0.7.6",
   networks: {
     hardhat: {
@@ -17,3 +17,5 @@ export default {
     }
   }
 };
+
+export default config;
