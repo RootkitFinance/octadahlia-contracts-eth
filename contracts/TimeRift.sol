@@ -17,7 +17,7 @@ contract TimeRift is MultiOwned, ITimeRift {
     mapping (uint256 => OctaDahlia) public nonces; // nonce -> flower
     mapping (address => IUniswapV2Pair) public pools; // flower -> pool
     mapping (address => bool) public MGEs; // MGE Contract -> y/n
-    mapping (address => bool) public balancers; // MGE Contract -> y/n
+    mapping (address => bool) public balancers; // address that can call BalancePrices
 
     constructor(address _dev6, address _dev9, IUniswapV2Factory _uniswapFactory) { 
         dev6 = _dev6;
