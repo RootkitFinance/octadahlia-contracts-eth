@@ -3,35 +3,62 @@ pragma solidity ^0.7.6;
 
 import "./Interfaces/IFlowerFeeSplitter.sol";
 import "./Interfaces/IERC20.sol";
-import "./MultiOwned.sol";
+import "./Interfaces/IMultiOwned.sol";
+import "./SafeSubtraction.sol";
 
-contract FlowerFeeSplitter is MultiOwned, IFlowerFeeSplitter {
+contract FlowerFeeSplitter is IFlowerFeeSplitter {
 
+    using SafeSubtraction for uint256;
+
+    address public owner = msg.sender;
     mapping (address => IERC20) public pairedTokens; // flower => paired
     mapping (address => uint256) public collectedFees;
+    mapping (address => bool) public controllers;
+
+    address public rootFeeder;
+    address public devFeeder;
+
+    modifier ownerOnly() {
+        require (msg.sender == owner, "Owner only");
+        _;
+    }
     
-    constructor() {
-        dictator = true;
+    constructor(address _rootFeeder, address _devFeeder) {
+        rootFeeder = _rootFeeder;
+        devFeeder = _devFeeder;
     }
 
-    function registerFlower(address flower, address pairedToken) ownerSOnly() public override {
+    function setController(address controller, bool allow) public ownerOnly() {
+        controllers[controller] = allow;
+    }
+
+    function registerFlower(address flower, address pairedToken) public override {
+        require (controllers[msg.sender] || msg.sender == owner, "Not an owner or controller");
         pairedTokens[flower] = IERC20(pairedToken);
     }
 
-    function depositFees(address flower, uint256 amount) ownerSOnly() public override {       
+    function depositFees(address flower, uint256 amount) public override {
+        require (controllers[msg.sender] || msg.sender == owner, "Not an owner or controller");
         pairedTokens[flower].transferFrom(msg.sender, address(this), amount);
         collectedFees[flower] += amount;
     }
 
     function payFees(address flower) public override {
-        MultiOwned dahlia = MultiOwned(flower);
+        uint256 share = collectedFees[flower]/3;
+
+        IMultiOwned dahlia = IMultiOwned(flower);
         uint256 ownerCount = dahlia.ownerCount();
-        uint256 share = collectedFees[flower]/ownerCount;
+        uint256 ownerShare = share/ownerCount;
         IERC20 paired = pairedTokens[flower];
 
         for (uint256 i = 1; i <= ownerCount; i++) {
-            paired.transfer(dahlia.owners(i), share);
-            collectedFees[flower] -= share;
+            paired.transfer(dahlia.owners(i), ownerShare);
         }
+
+        paired.transfer(rootFeeder, share);
+        collectedFees[flower] = collectedFees[flower].sub(share + share);
+
+        paired.transfer(devFeeder, collectedFees[flower]);
+        collectedFees[flower] = 0;
     }
 }
