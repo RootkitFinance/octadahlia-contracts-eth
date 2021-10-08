@@ -17,6 +17,7 @@ contract TimeRift is MultiOwned, ITimeRift {
     mapping (uint256 => OctaDahlia) public nonces; // nonce -> flower
     mapping (address => IUniswapV2Pair) public pools; // flower -> pool
     mapping (address => bool) public MGEs; // MGE Contract -> y/n
+    mapping (address => bool) public balancers; // MGE Contract -> y/n
 
     constructor(address _dev6, address _dev9, IUniswapV2Factory _uniswapFactory) { 
         dev6 = _dev6;
@@ -31,11 +32,15 @@ contract TimeRift is MultiOwned, ITimeRift {
         MGEs[_mge] = _enable;
     }
 
+    function enableBalancerContract(address _balancer, bool _enable) public ownerSOnly() {
+        balancers[_balancer] = _enable;
+    }
+
     function setFlowerFeeSplitter(IFlowerFeeSplitter _flowerFeeSplitter) public ownerSOnly {
         splitter = _flowerFeeSplitter;
     }
 
-    function OctaDahliaGrowsBrighter(IERC20 pairedToken, uint256 startingLiquidity, uint256 startingTokenSupply, bool dictate) public override returns (address) {
+    function OctaDahliaGrowsBrighter(IERC20 pairedToken, uint256 startingLiquidity, uint256 startingTokenSupply, bool dictate) public override ownerSOnly() returns (address) {
         OctaDahlia Dahlia = new OctaDahlia();
         lastNonce++;
         nonces[lastNonce] = Dahlia;
@@ -52,7 +57,8 @@ contract TimeRift is MultiOwned, ITimeRift {
         return address(Dahlia);
     }
 
-    function balancePrices(uint256[] memory noncesToBalance) public ownerSOnly() {
+    function balancePrices(uint256[] memory noncesToBalance) public {
+        require (balancers[msg.sender] || MGEs[msg.sender]);
         uint256 safeLength = noncesToBalance.length;
         OctaDahlia Dahlia;
         uint256 amount;
