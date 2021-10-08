@@ -145,18 +145,4 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
     function recoverTokens(IERC20 token) public ownerSOnly() {
         token.transfer(msg.sender, token.balanceOf(address(this)));
     }
-
-    // up to 9 friends can receive a cut of fees, controlled by the owner with index spot 1.
-    // up to 9 owners also receive fees, each owner slot is under the control of itself if
-    // the dictator bool is false. If dictator bool is true, owner 1 controls all 18 spots.
-    uint256 public override friendCount;
-    mapping (uint256 => address) public override friends;
-
-    function addOrChangeFriends(uint256 indexSpot, address friend) public virtual ownerOnly(){
-        require (indexSpot <= 9);
-        if (friends[indexSpot] == address(0)){
-            friendCount++;
-        }
-        friends[indexSpot] = friend;
-    }
 }
