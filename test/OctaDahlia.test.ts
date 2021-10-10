@@ -159,17 +159,6 @@ describe("OctaDahlia", async function () {
             await expect(await pairedToken.connect(owner).balanceOf(user1.address)).to.equal(100)
         })
     })
-    describe('addOrChangeFriends(uint256 indexSpot, address friend)', function () {
-        it('should alow setting friends', async function() {
-            await octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, owner.address, false)
-
-            await expect(octaDahlia.connect(user1).addOrChangeFriends(2, user3.address)).to.be.reverted
-
-            await octaDahlia.connect(owner).addOrChangeFriends(2, user3.address)
-            await expect(await octaDahlia.friendCount()).to.equal(1)
-            await expect(await octaDahlia.friends(2)).to.equal(user3.address)
-        })
-     })
 
     describe('transferFrom(address sender, address recipient, uint256 amount)', function() {
         it('should not allow attacker to steal from unlocked pair liquid unlocked', async function() {
