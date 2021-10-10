@@ -3,7 +3,7 @@ const { expect } = require("chai");
 const { utils, constants } = require("ethers");
 const { createUniswap } = require("./helpers");
 
-describe("TimeRift", function() {
+describe.skip("TimeRift", function() {
     let owner, dev6, dev9, uniswap, timeRift, paired;
 
     const logInfo = async (flower) => {
