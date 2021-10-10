@@ -4,7 +4,7 @@ pragma solidity ^0.7.6;
 import "./Interfaces/IMultiOwned.sol";
 
 abstract contract MultiOwned is IMultiOwned {
-
+    
     uint256 public override ownerCount; // 3 to start, up to 6 more, 9 in total
 
     mapping (uint256 => address) public override owners;
