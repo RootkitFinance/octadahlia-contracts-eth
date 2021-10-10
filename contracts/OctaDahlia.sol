@@ -8,8 +8,6 @@ import "./Interfaces/IERC20.sol";
 import "./Interfaces/IUniswapV2Pair.sol";
 import "./Interfaces/IOctaDahlia.sol"; 
 
-import "hardhat/console.sol";
-
 contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
 
     using SafeSubtraction for uint256;
@@ -40,11 +38,8 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         require (msg.sender == rift || msg.sender == mge);
         liquidityPairLocked[pair] = false;
         uint256 pendingFees = _balanceOf[rift];
-        console.log('pendingFees:', pendingFees);
 
         uint256 out1 = getAmountOut(pendingFees);
-        console.log('getAmountOut:', out1);
-
         uint256 out0 = 0;
         _burn(rift, pendingFees);
         _mint(address(pair), pendingFees);
