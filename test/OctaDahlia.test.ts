@@ -11,7 +11,7 @@ import { createUniswap } from './helpers'
 import { Address } from "cluster";
 
 
-describe.only("OctaDahlia", async function () {
+describe("OctaDahlia", async function () {
 
     let owner: SignerWithAddress, user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress, attacker: SignerWithAddress;
     let octaDahlia: OctaDahlia & Contract;
