@@ -52,58 +52,58 @@ describe("OctaDahlia", async function () {
         it('should only initialize once', async function () {
             let mge_address = user3.address
 
-            await expect(octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge_address, false)).to.not.be.reverted
-            await expect(octaDahlia.connect(owner).setUp(uniswap.router.address, user1.address, user2.address, mge_address, false)).to.be.reverted
+            await expect(octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge_address, false, 0, 0)).to.not.be.reverted
+            await expect(octaDahlia.connect(owner).setUp(uniswap.router.address, user1.address, user2.address, mge_address, false, 0, 0)).to.be.reverted
         })
 
         it('should only allow pair that includes correct token', async function () {
             let mge_address = user3.address
-            
+
             await uniswap.factory.connect(owner).createPair(uniswap.weth.address, pairedToken.address)
 
             let wrong_pair_address = await uniswap.factory.connect(owner).getPair(uniswap.weth.address, pairedToken.address)
             let wrong_pair = await ethers.getContractAt(uniswap.UniswapV2PairJson.abi, wrong_pair_address)
 
-            await expect(octaDahlia.connect(owner).setUp(wrong_pair_address.address, user1.address, user2.address, mge_address, false)).to.be.reverted
+            await expect(octaDahlia.connect(owner).setUp(wrong_pair_address.address, user1.address, user2.address, mge_address, false, 0, 0)).to.be.reverted
         })
     })
 
     describe('balanceAdjustment(bool increase, uint256 _amount, address _account)', function () {
-        it('should revert if not msg.sender not from rift or mge', async function() {
+        it('should revert if not msg.sender not from rift or mge', async function () {
             let mge = user3
-            await expect(octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge.address, false)).to.not.be.reverted
+            await expect(octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge.address, false, 0, 0)).to.not.be.reverted
 
             await expect(octaDahlia.connect(mge).balanceAdjustment(true, 0, mge.address)).to.not.be.reverted
             await expect(octaDahlia.connect(user1).balanceAdjustment(true, 0, mge.address)).to.be.reverted
         })
 
-        it('should mint amount to account', async function() {
+        it('should mint amount to account', async function () {
             let mge = user3
             let MINT_AMOUNT = 10;
-            await octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge.address, false)
+            await octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge.address, false, 0, 0)
 
             await expect(octaDahlia.connect(mge).balanceAdjustment(true, MINT_AMOUNT, mge.address)).to.not.be.reverted
             await expect(await octaDahlia.connect(mge).balanceOf(mge.address)).to.equal(MINT_AMOUNT)
         })
 
-        it('should burn amount from account', async function() {
+        it('should burn amount from account', async function () {
             let mge = user3
             let MINT_AMOUNT = 100;
             let BURN_AMOUNT = 10;
 
-            await octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge.address, false)
+            await octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge.address, false, 0, 0)
             await octaDahlia.connect(mge).balanceAdjustment(true, MINT_AMOUNT, mge.address)
             await octaDahlia.connect(mge).balanceAdjustment(false, BURN_AMOUNT, mge.address)
 
             await expect(await octaDahlia.connect(mge).balanceOf(mge.address)).to.equal(MINT_AMOUNT - BURN_AMOUNT)
         })
 
-        it('should revert burn amount from account if burn > balance', async function() {
+        it('should revert burn amount from account if burn > balance', async function () {
             let mge = user3
             let MINT_AMOUNT = 100;
             let BURN_AMOUNT = 110;
 
-            await expect(octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge.address, false)).to.not.be.reverted
+            await expect(octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge.address, false, 0, 0)).to.not.be.reverted
             await expect(octaDahlia.connect(mge).balanceAdjustment(true, MINT_AMOUNT, mge.address)).to.not.be.reverted
 
             await expect(octaDahlia.connect(mge).balanceAdjustment(false, BURN_AMOUNT, mge.address)).to.be.revertedWith("ERC20: burn too much")
@@ -111,29 +111,101 @@ describe("OctaDahlia", async function () {
 
     })
 
+
+    describe('transfer(address recipient, uint256 amount)', async function() {
+
+        describe('Basic sender and recipient, (direct transactions)', function() {
+
+            it('should on transfer 100, take 3.21% + 0% burnRate, (0.9679), -> send 97', async function() {
+                let MINT_AMOUNT = 10000;
+                let BURN_RATE = 0; // 0%
+                let mge = user3;
+                let rift = owner;
+    
+                await octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge.address, false, BURN_RATE, 0)
+    
+                await expect(octaDahlia.connect(mge).balanceAdjustment(true, MINT_AMOUNT, mge.address)).to.not.be.reverted
+    
+                let mge_balance = await octaDahlia.connect(mge).balanceOf(mge.address)
+    
+                await octaDahlia.connect(mge).transfer(user2.address, 100)
+    
+                let user3_balance = await octaDahlia.connect(owner).balanceOf(user2.address)
+                let rift_balance = await octaDahlia.connect(owner).balanceOf(rift.address)
+
+                let transfer = Math.round(100*(1-0.0321)) // 97
+                let fee = Math.round(100*0.0321)
+
+                // Expect 97 transfer
+                await expect(user3_balance).to.equal(transfer)
+
+                // Expect Rift Transfer
+                await expect(rift_balance).to.equal(fee)
+
+            })
+    
+            it('should on transfer 100, take 3.21% + 1% burnRate, (0.9579), -> send 96', async function() {
+                let MINT_AMOUNT = 10000;
+                let BURN_RATE = 100; // 1%
+                let mge = user3;
+                let rift = owner;
+    
+                await octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge.address, false, BURN_RATE, 0)
+    
+                await expect(octaDahlia.connect(mge).balanceAdjustment(true, MINT_AMOUNT, mge.address)).to.not.be.reverted
+    
+                let owner_balance = await octaDahlia.connect(mge).balanceOf(mge.address)
+    
+                await octaDahlia.connect(mge).transfer(user2.address, 100)
+    
+                let user3_balance = await octaDahlia.connect(owner).balanceOf(user2.address)
+                let rift_balance = await octaDahlia.connect(owner).balanceOf(rift.address)
+    
+                let result = Math.round(100*(1-0.0321-0.01)) // 96
+                let fee = Math.round(100*0.0321)
+                
+                // Expect 96 transfer
+                await expect(user3_balance).to.equal(result)
+
+                // Expect Rift Transfer
+                await expect(rift_balance).to.equal(fee)
+            })
+        })
+
+        describe('Purchase transactions from pair to buyer', function() {
+            it('should burn more if pool price is higher')
+            it('should burn less if pool price is lower')
+        })
+        describe('Selling transactions from seller to pair', function() {
+            it('should burn more if pool price is higher')
+            it('should burn less if pool price is lower')
+        })
+
+    })
+
     describe('alignPrices()', function () {
 
-        function getAmountOut(amountIn: number, tokenPairBalance: number, octoPairBalance: number ): number {
+        function getAmountOut(amountIn: number, tokenPairBalance: number, octoPairBalance: number): number {
             let amountInWithFee = amountIn * 997;
             let numerator = amountInWithFee * tokenPairBalance;
             let denominator = octoPairBalance * 1000 + amountInWithFee;
             return Math.floor(numerator / denominator)
         }
 
-        it.skip('should align price', async function() {
+        it.skip('should align price', async function () {
             let mge = user3
             let rift = owner;
             let RIFT_OCTO_BALANCE = 10;
             let UNI_PAIR_BALANCE = 100;
             let UNI_OCTO_BALANCE = 100;
 
-            await octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge.address, false)
-            
+            await octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge.address, false, 0, 0)
+
             // Set Rift and Token Balance
             await octaDahlia.connect(rift).balanceAdjustment(true, RIFT_OCTO_BALANCE, rift.address)
             await octaDahlia.connect(rift).balanceAdjustment(true, RIFT_OCTO_BALANCE, rift.address)
             await octaDahlia.connect(rift).balanceAdjustment(true, UNI_OCTO_BALANCE, pair.address,)
-            
+
             await pairedToken.connect(owner).transfer(pair.address, UNI_PAIR_BALANCE)
 
             ///Revert
@@ -144,11 +216,11 @@ describe("OctaDahlia", async function () {
         })
     })
 
-    describe('recoverTokens(IERC20 token)', function () { 
-        it('should transfer tokens from octodahlia to user', async function() {     
-            
+    describe('recoverTokens(IERC20 token)', function () {
+        it('should transfer tokens from octodahlia to user', async function () {
+
             // Setup OctaDahlia, the send octadahlia 100 tokens
-            await octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, user3.address, false)
+            await octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, user3.address, false, 0, 0)
             await pairedToken.connect(owner).transfer(octaDahlia.address, 100)
 
             // Check balance of user1 is zero
@@ -160,13 +232,13 @@ describe("OctaDahlia", async function () {
         })
     })
 
-    describe('transferFrom(address sender, address recipient, uint256 amount)', function() {
-        it('should not allow attacker to steal from unlocked pair liquid unlocked', async function() {
+    describe('transferFrom(address sender, address recipient, uint256 amount)', function () {
+        it('should not allow attacker to steal from unlocked pair liquid unlocked', async function () {
             let mge = user3
             let rift = owner;
             let RIFT_BALANCE = 10_000;
 
-            await expect(octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge.address, false)).to.not.be.reverted
+            await expect(octaDahlia.connect(owner).setUp(pair.address, user1.address, user2.address, mge.address, false, 0, 0)).to.not.be.reverted
             await expect(octaDahlia.connect(rift).balanceAdjustment(true, RIFT_BALANCE, rift.address)).to.not.be.reverted
 
             await expect(octaDahlia.connect(attacker).transferFrom(rift.address, attacker.address, 100)).to.be.revertedWith("ERC20: allow")
@@ -176,7 +248,7 @@ describe("OctaDahlia", async function () {
         })
     })
 
-    describe.skip('internal', function() {
+    describe.skip('internal', function () {
         describe('_transfer(address sender, address recipient, uint256 amount) internal', function () { })
         describe('_burnAndFees(address account, uint256 amount, uint256 burnPercent) internal', function () { })
         describe('dynamicBurnRate() internal', function () { })
