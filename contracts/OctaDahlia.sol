@@ -18,7 +18,8 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
     address public mge;
     bool private isToken0;
 
-    uint256 public burnRate = 1321; // 13.21 % burn + 3.21% system fees
+    uint256 public burnRate;
+    uint256 public maxBuyPercent;
 
     constructor() {
         rift = msg.sender; // remove if not launched by the Time Rift Contract, gives mint power
@@ -40,8 +41,8 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         uint256 pendingFees = _balanceOf[rift];
 
         uint256 out1 = getAmountOut(pendingFees);
-
         uint256 out0 = 0;
+
         _burn(rift, pendingFees);
         _mint(address(pair), pendingFees);
         if (!isToken0) {
@@ -49,7 +50,7 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
             out1 = 0;
         }
         address to = mge == address(0) ? rift : mge;
-        pair.swap(out0 , out1 , to, new bytes(0));
+        pair.swap(out0, out1, to, new bytes(0));
 
         uint256 pairBalance = _balanceOf[address(pair)];
         uint256 neededInPool = totalSupply - pairBalance;
@@ -65,13 +66,15 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
     }
  
     // set up functions
-    function setUp(IUniswapV2Pair _pair, address dev6, address dev9, address _mge, bool _dictator) external override {
+    function setUp(IUniswapV2Pair _pair, address dev6, address dev9, address _mge, bool _dictator, uint256 _burnRate, uint256 _maxBuyPercent) external {
         require (ownerCount == 0);
         pair = _pair;
         isToken0 = pair.token0() == address(this);
         pairedToken = isToken0 ? IERC20(pair.token1()) : IERC20(pair.token0());
         mge = _mge;
         dictator = _dictator;
+        burnRate = _burnRate;
+        maxBuyPercent = _maxBuyPercent;
         address owner1 = _mge == address(0) ? address(tx.origin) : _mge;
         setInitialOwners(owner1, dev6, dev9);
     }
@@ -100,7 +103,7 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         emit Transfer(sender, recipient, amount);
         
         if (buy) {
-            require (amount < totalSupply / 100);
+            require (amount < totalSupply / maxBuyPercent);
             if (poolPriceHigher) {
                 dynamicBurnModifier = dynamicBurnModifier + 100 > burnRate ? 100 : burnRate - dynamicBurnModifier;
                 _burnAndFees(recipient, amount, dynamicBurnModifier);

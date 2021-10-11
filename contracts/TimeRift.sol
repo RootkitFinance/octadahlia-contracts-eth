@@ -12,12 +12,15 @@ contract TimeRift is MultiOwned, ITimeRift {
     address private dev9;
     IUniswapV2Factory public uniswapFactory;
     IFlowerFeeSplitter public splitter;
+    uint256 public dabPercent;
 
     uint256 public lastNonce;
     mapping (uint256 => OctaDahlia) public nonces; // nonce -> flower
     mapping (address => IUniswapV2Pair) public pools; // flower -> pool
     mapping (address => bool) public MGEs; // MGE Contract -> y/n
     mapping (address => bool) public balancers; // address that can call BalancePrices
+
+    event OctaDahliaCreated(address indexed flower, address paired, address pool);
 
     constructor(address _dev6, address _dev9, IUniswapV2Factory _uniswapFactory) { 
         dev6 = _dev6;
@@ -28,19 +31,23 @@ contract TimeRift is MultiOwned, ITimeRift {
     }
 
     // Enable mint and burn for Market Generation Contracts that launch upOnly tokens
-    function enableMgeContract(address _mge, bool _enable) public ownerSOnly() {
+    function enableMge(address _mge, bool _enable) public ownerSOnly() {
         MGEs[_mge] = _enable;
     }
 
-    function enableBalancerContract(address _balancer, bool _enable) public ownerSOnly() {
+    function enableBalancer(address _balancer, bool _enable) public ownerSOnly() {
         balancers[_balancer] = _enable;
     }
 
-    function setFlowerFeeSplitter(IFlowerFeeSplitter _flowerFeeSplitter) public ownerSOnly {
+    function setFlowerFeeSplitter(IFlowerFeeSplitter _flowerFeeSplitter) public ownerSOnly() {
         splitter = _flowerFeeSplitter;
     }
+    
+    function setDabPercent(uint256 _dabPercent) public ownerSOnly() {
+        dabPercent = _dabPercent;
+    }
 
-    function OctaDahliaGrowsBrighter(IERC20 pairedToken, uint256 startingLiquidity, uint256 startingTokenSupply, bool dictate) public override ownerSOnly() returns (address) {
+    function OctaDahliaGrowsBrighter(IERC20 pairedToken, uint256 startingLiquidity, uint256 startingTokenSupply, bool dictate, uint256 burnRate, uint256 maxBuyPercent) public override ownerSOnly() returns (address) {
         OctaDahlia Dahlia = new OctaDahlia();
         lastNonce++;
         nonces[lastNonce] = Dahlia;
@@ -51,9 +58,10 @@ contract TimeRift is MultiOwned, ITimeRift {
         Dahlia.balanceAdjustment(true, startingTokenSupply, msg.sender);
         pool.mint(address(this));
         address mge = MGEs[msg.sender] ? msg.sender : address(0);
-        Dahlia.setUp(pool, dev6, dev9, mge, dictate);
+        Dahlia.setUp(pool, dev6, dev9, mge, dictate, burnRate, maxBuyPercent);
         splitter.registerFlower(address(Dahlia), address(pairedToken));
         pairedToken.approve(address(splitter), uint(-1));
+        emit OctaDahliaCreated(address(Dahlia), address(pairedToken), address(pool));
         return address(Dahlia);
     }
 
@@ -83,7 +91,7 @@ contract TimeRift is MultiOwned, ITimeRift {
             poolBalance = dahlia.balanceOf(address(pools[address(dahlia)]));
             trueSupply = dahlia.totalSupply() - poolBalance;
             dif = trueSupply > poolBalance ? trueSupply - poolBalance : poolBalance - trueSupply;
-            if (dif * 9970 / trueSupply > 1321) {
+            if (dif * 9970 / trueSupply > dabPercent) {
                 toBalance[count++] = i;
             }
         }

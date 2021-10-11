@@ -52,7 +52,7 @@ contract MarketGeneration {
         isActive = true;
     }
 
-    function complete(uint256 octaDalhiaPerPaired) public ownerOnly() active() { // if octaDalhiaPerPaired is 100, 100 octaDalhias are minted per 1 paired token
+    function complete(uint256 octaDalhiaPerPaired, uint256 burnRate, uint256 maxBuyPercent) public ownerOnly() active() { // if octaDalhiaPerPaired is 100, 100 octaDalhias are minted per 1 paired token
         isActive = false;
         if (totalContribution == 0) { return; }
         
@@ -60,7 +60,7 @@ contract MarketGeneration {
         IWETH(address(pairedToken)).deposit{ value: balance }();
         startingSupply = balance * octaDalhiaPerPaired;
         pairedToken.approve(address(timeRift), uint256(-1));
-        octaDahlia = IERC20(timeRift.OctaDahliaGrowsBrighter(pairedToken, balance, startingSupply, false));
+        octaDahlia = IERC20(timeRift.OctaDahliaGrowsBrighter(pairedToken, balance, startingSupply, false, burnRate, maxBuyPercent));
         distributionComplete = true;
     }
 
