@@ -103,7 +103,7 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         emit Transfer(sender, recipient, amount);
         
         if (buy) {
-            require (amount < totalSupply / maxBuyPercent);
+            require (amount < totalSupply * maxBuyPercent / 10000);
             if (poolPriceHigher) {
                 dynamicBurnModifier = dynamicBurnModifier + 100 > burnRate ? 100 : burnRate - dynamicBurnModifier;
                 _burnAndFees(recipient, amount, dynamicBurnModifier);
