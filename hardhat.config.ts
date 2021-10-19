@@ -8,6 +8,9 @@ import "@nomiclabs/hardhat-waffle";
  */
 const config: HardhatUserConfig =  {
   solidity: "0.7.6",
+  paths: {
+    sources: './contracts/**/'
+  },
   networks: {
     hardhat: {
       accounts: {
