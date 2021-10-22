@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { utils, constants, Contract, BigNumber } from "ethers";
 import { expect, util } from "chai";
 import { parseEther } from "ethers/lib/utils";
@@ -9,6 +9,37 @@ import { OctaDahlia } from "../typechain/OctaDahlia";
 import { createUniswap } from './helpers'
 import { ERC20, ERC20Test, IUniswapV2Factory, IUniswapV2Pair, IUniswapV2Router02, LiquidityLockedERC20 } from "../typechain";
 
+
+
+function hhSetBalance(address: string, balance: string) {
+    return network.provider.send("hardhat_setBalance", [
+        address,
+        balance,
+    ]);
+}
+
+/**
+ * Impersonate an Account
+ * @param signer Account to Impersonate
+ * @param callback Action during impersonation
+ */
+async function hhImpersonate(address: string, callback: (signer: SignerWithAddress) => Promise<any>) {
+    // Set Request
+    await network.provider.request({
+        method: "hardhat_impersonateAccount",
+        params: [address],
+    });
+
+    let res = await callback(await ethers.getSigner(address))
+
+    // End Request
+    await network.provider.request({
+        method: "hardhat_stopImpersonatingAccount",
+        params: [address],
+    });
+
+    return res;
+}
 
 describe("OctaDahlia", async function () {
 
@@ -48,6 +79,10 @@ describe("OctaDahlia", async function () {
 
         pair_octo_A = uniswap.pairFor(await uniswap.factory.connect(owner).getPair(octaDahlia.address, tokenA.address))
         pair_A_B = uniswap.pairFor(await uniswap.factory.connect(owner).getPair(tokenA.address, tokenB.address))
+
+        // Set Pair Balances for Impersonation Tx
+        await hhSetBalance(pair_octo_A.address, (await owner.getBalance()).toHexString())
+        await hhSetBalance(pair_A_B.address, (await owner.getBalance()).toHexString())
     })
 
     describe('setUp(IUniswapV2Pair _pair, address dev6, address dev9, address _mge, bool _dictator)', function () {
@@ -177,24 +212,24 @@ describe("OctaDahlia", async function () {
             })
         })
 
-        describe('Purchase transactions from pair to buyer', function () {
+        describe('Sell transactions from seller (liquidity provider) to pair', function () {
 
             it('should burn more if pool price is higher', async function () {
                 let MINT_AMOUNT = utils.parseEther("50");
                 let PAIR_AMOUNT = utils.parseEther("40");
                 let BURN_RATE = 10 // 1%
 
-                let buyer = users[4]
+                let seller = users[4]
                 let rift = users[5]
-                
+
                 // Initialize OctaDahlia + Set Balance for MGE and PairV2
                 await octaDahlia.connect(owner).setUp(pair_octo_A.address, users[0].address, users[1].address, owner.address, false, BURN_RATE, 0)
 
                 // Mint for Accounts
                 // Octo: Total Supply 50(e21)
-                await octaDahlia.connect(owner).balanceAdjustment(true, MINT_AMOUNT, buyer.address)
-                await tokenA.connect(owner).testMint(buyer.address, MINT_AMOUNT)
-                await tokenB.connect(owner).testMint(buyer.address, MINT_AMOUNT)
+                await octaDahlia.connect(owner).balanceAdjustment(true, MINT_AMOUNT, seller.address)
+                await tokenA.connect(owner).testMint(seller.address, MINT_AMOUNT)
+                await tokenB.connect(owner).testMint(seller.address, MINT_AMOUNT)
                 let total_octo_supply = MINT_AMOUNT;
                 let total_A_supply = MINT_AMOUNT;
 
@@ -205,48 +240,48 @@ describe("OctaDahlia", async function () {
                 total_octo_supply = total_octo_supply.add(PAIR_AMOUNT);
 
                 // Approve
-                await octaDahlia.connect(buyer).approve(uniswap.router.address, constants.MaxUint256)
-                await tokenA.connect(buyer).approve(uniswap.router.address, constants.MaxUint256)
-                await tokenB.connect(buyer).approve(uniswap.router.address, constants.MaxUint256)
-                
+                await octaDahlia.connect(seller).approve(uniswap.router.address, constants.MaxUint256)
+                await tokenA.connect(seller).approve(uniswap.router.address, constants.MaxUint256)
+                await tokenB.connect(seller).approve(uniswap.router.address, constants.MaxUint256)
+
                 // Amount
                 let amt = utils.parseEther('20')
-                
+
                 // Circulating Supply = 90 - 50 = 50 (of owner)
                 let circ_supply = total_octo_supply.sub(PAIR_AMOUNT).abs();
                 let dyn_burn_rate = (circ_supply.sub(PAIR_AMOUNT).abs().mul(9970).div(circ_supply))
                 let burn_amount = dyn_burn_rate.add(BURN_RATE).mul(amt).div(10000)
                 let fees = amt.mul(321).div(10000)
 
-                let buyer_before = await octaDahlia.balanceOf(buyer.address)
+                let seller_before = await octaDahlia.balanceOf(seller.address)
                 let pair_before = await octaDahlia.balanceOf(pair_octo_A.address)
-                
-                await uniswap.router
-                    .connect(buyer)
-                    .addLiquidity(octaDahlia.address, tokenA.address, amt, amt, amt, amt, buyer.address, 2e9)
 
-                let buyer_res = await octaDahlia.balanceOf(buyer.address)
+                await uniswap.router
+                    .connect(seller)
+                    .addLiquidity(octaDahlia.address, tokenA.address, amt, amt, amt, amt, seller.address, 2e9)
+
+                let seller_res = await octaDahlia.balanceOf(seller.address)
                 let pair_res = await octaDahlia.balanceOf(pair_octo_A.address)
 
-                expect(buyer_res.toString()).to.equal(buyer_before.sub(amt).toString())
+                expect(seller_res.toString()).to.equal(seller_before.sub(amt).toString())
                 expect(pair_res.toString()).to.equal(pair_before.add(amt).sub(burn_amount).sub(fees).toString())
             })
 
-            it('should burn less if pool price is lower', async function() {
+            it('should burn less if pool price is lower', async function () {
                 let MINT_AMOUNT = utils.parseEther("50");
                 let PAIR_AMOUNT = utils.parseEther("60");
-                let BURN_RATE = 10 // 1%
+                let BURN_RATE = 10 // .1%
 
-                let buyer = users[4]
-                
+                let seller = users[4]
+
                 // Initialize OctaDahlia + Set Balance for MGE and PairV2
                 await octaDahlia.connect(owner).setUp(pair_octo_A.address, users[0].address, users[1].address, owner.address, false, BURN_RATE, 0)
 
                 // Mint for Accounts
                 // Octo: Total Supply 50(e21)
-                await octaDahlia.connect(owner).balanceAdjustment(true, MINT_AMOUNT, buyer.address)
-                await tokenA.connect(owner).testMint(buyer.address, MINT_AMOUNT)
-                await tokenB.connect(owner).testMint(buyer.address, MINT_AMOUNT)
+                await octaDahlia.connect(owner).balanceAdjustment(true, MINT_AMOUNT, seller.address)
+                await tokenA.connect(owner).testMint(seller.address, MINT_AMOUNT)
+                await tokenB.connect(owner).testMint(seller.address, MINT_AMOUNT)
                 let total_octo_supply = MINT_AMOUNT;
                 let total_A_supply = MINT_AMOUNT;
 
@@ -257,14 +292,14 @@ describe("OctaDahlia", async function () {
                 total_octo_supply = total_octo_supply.add(PAIR_AMOUNT);
 
                 // Approve
-                await octaDahlia.connect(buyer).approve(uniswap.router.address, constants.MaxUint256)
-                await tokenA.connect(buyer).approve(uniswap.router.address, constants.MaxUint256)
-                await tokenB.connect(buyer).approve(uniswap.router.address, constants.MaxUint256)
-                
+                await octaDahlia.connect(seller).approve(uniswap.router.address, constants.MaxUint256)
+                await tokenA.connect(seller).approve(uniswap.router.address, constants.MaxUint256)
+                await tokenB.connect(seller).approve(uniswap.router.address, constants.MaxUint256)
+
                 // Amount
                 let amt = utils.parseEther('20')
-                
-                // Circulating Supply = 110 - 60 = 50 (of buyer)
+
+                // Circulating Supply = 110 - 60 = 50 (of seller)
                 let circ_supply = total_octo_supply.sub(PAIR_AMOUNT).abs();
                 let dyn_burn_rate = (circ_supply.sub(PAIR_AMOUNT).abs().mul(9970).div(circ_supply))
                 // On Pool Price Lower
@@ -272,23 +307,127 @@ describe("OctaDahlia", async function () {
                 let burn_amount = dyn_burn_rate.mul(amt).div(10000)
                 let fees = amt.mul(321).div(10000)
 
-                let buyer_before = await octaDahlia.balanceOf(buyer.address)
+                let seller_before = await octaDahlia.balanceOf(seller.address)
                 let pair_before = await octaDahlia.balanceOf(pair_octo_A.address)
-                
+
                 await uniswap.router
-                    .connect(buyer)
-                    .addLiquidity(octaDahlia.address, tokenA.address, amt, amt, amt, amt, buyer.address, 2e9)
+                    .connect(seller)
+                    .addLiquidity(octaDahlia.address, tokenA.address, amt, amt, amt, amt, seller.address, 2e9)
+
+                let seller_res = await octaDahlia.balanceOf(seller.address)
+                let pair_res = await octaDahlia.balanceOf(pair_octo_A.address)
+
+                expect(seller_res.toString()).to.equal(seller_before.sub(amt).toString())
+                expect(pair_res.toString()).to.equal(pair_before.add(amt).sub(burn_amount).sub(fees).toString())
+            })
+        })
+        describe('Buy transactions from buyer (trader) to pair', function () {
+            it('should burn more if pool price is higher', async function () {
+                let MINT_AMOUNT = utils.parseEther("50");
+                let PAIR_AMOUNT = utils.parseEther("40");
+                let BURN_RATE = 10 // .1%
+                let MAX_BUY_PERCENT = 10000 // 100%
+
+                let provider = users[4]
+                let buyer = users[5]
+
+                // Initialize OctaDahlia + Set Balance for MGE and PairV2
+                await octaDahlia.connect(owner).setUp(pair_octo_A.address, users[0].address, users[1].address, owner.address, false, BURN_RATE, MAX_BUY_PERCENT)
+
+                // Mint for Accounts
+                // Octo: Total Supply 50(e21)
+                await octaDahlia.connect(owner).balanceAdjustment(true, MINT_AMOUNT, provider.address)
+
+                let total_octo_supply = MINT_AMOUNT;
+
+                // Mint Octo for Pair
+                // Octo: Total Supply 110
+                // Please see: https://github.com/RootkitFinance/octadahlia-contracts-eth/issues/7
+                await octaDahlia.connect(owner).balanceAdjustment(true, PAIR_AMOUNT, pair_octo_A.address)
+                total_octo_supply = total_octo_supply.add(PAIR_AMOUNT);
+
+                // Approve
+                await octaDahlia.connect(provider).approve(uniswap.router.address, constants.MaxUint256)
+                await tokenA.connect(provider).approve(uniswap.router.address, constants.MaxUint256)
+                await tokenB.connect(provider).approve(uniswap.router.address, constants.MaxUint256)
+
+                // Amount
+                let amt = utils.parseEther('20')
+
+                // Circulating Supply = 90 - 40 = 50 (of provider)
+                let circ_supply = total_octo_supply.sub(PAIR_AMOUNT).abs();
+                let dyn_burn_rate = (circ_supply.sub(PAIR_AMOUNT).abs().mul(9970).div(circ_supply))
+
+                // On Pool Price Higher
+                dyn_burn_rate = dyn_burn_rate.add(100).gt(BURN_RATE) ? BigNumber.from(100) : dyn_burn_rate.sub(BURN_RATE).abs();
+                let burn_amount = dyn_burn_rate.mul(amt).div(10000)
+                let fees = amt.mul(321).div(10000)
+
+                let pair_before = await octaDahlia.balanceOf(pair_octo_A.address)
+
+                // Send Amount to Buyer
+                await hhImpersonate(pair_octo_A.address, async (pair) => {
+                    await octaDahlia.connect(pair).transfer(buyer.address, amt)
+                })
 
                 let buyer_res = await octaDahlia.balanceOf(buyer.address)
                 let pair_res = await octaDahlia.balanceOf(pair_octo_A.address)
 
-                expect(buyer_res.toString()).to.equal(buyer_before.sub(amt).toString())
-                expect(pair_res.toString()).to.equal(pair_before.add(amt).sub(burn_amount).sub(fees).toString())
+                expect(pair_res.toString()).to.equal(pair_before.sub(amt).toString())
+                expect(buyer_res.toString()).to.equal(amt.sub(fees).sub(burn_amount).toString())
             })
-        })
-        describe('Selling transactions from seller to pair', function () {
-            it('should burn more if pool price is higher')
-            it('should burn less if pool price is lower')
+            it('should burn less if pool price is lower', async function () {
+                let MINT_AMOUNT = utils.parseEther("50");
+                let PAIR_AMOUNT = utils.parseEther("80");
+                let BURN_RATE = 10 // .1%
+                let MAX_BUY_PERCENT = 10000 // 100%
+
+                let provider = users[4]
+                let buyer = users[5]
+
+                // Initialize OctaDahlia + Set Balance for MGE and PairV2
+                await octaDahlia.connect(owner).setUp(pair_octo_A.address, users[0].address, users[1].address, owner.address, false, BURN_RATE, MAX_BUY_PERCENT)
+
+                // Mint for Accounts
+                // Octo: Total Supply 50(e21)
+                await octaDahlia.connect(owner).balanceAdjustment(true, MINT_AMOUNT, provider.address)
+
+                let total_octo_supply = MINT_AMOUNT;
+
+                // Mint Octo for Pair
+                // Octo: Total Supply 110
+                // Please see: https://github.com/RootkitFinance/octadahlia-contracts-eth/issues/7
+                await octaDahlia.connect(owner).balanceAdjustment(true, PAIR_AMOUNT, pair_octo_A.address)
+                total_octo_supply = total_octo_supply.add(PAIR_AMOUNT);
+
+                // Approve
+                await octaDahlia.connect(provider).approve(uniswap.router.address, constants.MaxUint256)
+                await tokenA.connect(provider).approve(uniswap.router.address, constants.MaxUint256)
+                await tokenB.connect(provider).approve(uniswap.router.address, constants.MaxUint256)
+
+                // Amount
+                let amt = utils.parseEther('20')
+
+                // Circulating Supply = 90 - 40 = 50 (of provider)
+                let circ_supply = total_octo_supply.sub(PAIR_AMOUNT).abs();
+                let dyn_burn_rate = (circ_supply.sub(PAIR_AMOUNT).abs().mul(9970).div(circ_supply))
+
+                let burn_amount = dyn_burn_rate.add(BURN_RATE).mul(amt).div(10000)
+                let fees = amt.mul(321).div(10000)
+
+                let pair_before = await octaDahlia.balanceOf(pair_octo_A.address)
+
+                // Send Amount to Buyer
+                await hhImpersonate(pair_octo_A.address, async (pair) => {
+                    await octaDahlia.connect(pair).transfer(buyer.address, amt)
+                })
+
+                let buyer_res = await octaDahlia.balanceOf(buyer.address)
+                let pair_res = await octaDahlia.balanceOf(pair_octo_A.address)
+
+                expect(pair_res.toString()).to.equal(pair_before.sub(amt).toString())
+                expect(buyer_res.toString()).to.equal(amt.sub(fees).sub(burn_amount).toString())
+            })
         })
 
     })

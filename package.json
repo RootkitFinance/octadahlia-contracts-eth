@@ -19,7 +19,7 @@
     "chai": "^4.3.4",
     "ethereum-waffle": "^3.2.0",
     "ethers": "^5.4.7",
-    "hardhat": "^2.0.2",
+    "hardhat": "^2.6.7",
     "mocha": "^8.2.0",
     "ts-node": "^10.2.1",
     "typechain": "^5.1.2",
