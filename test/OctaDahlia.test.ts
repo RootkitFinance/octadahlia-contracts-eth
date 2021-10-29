@@ -1,4 +1,4 @@
-import { ethers, network } from "hardhat";
+import { ethers } from "hardhat";
 import { utils, constants, Contract, BigNumber } from "ethers";
 import { expect, util } from "chai";
 import { parseEther } from "ethers/lib/utils";
@@ -6,40 +6,8 @@ import { parseEther } from "ethers/lib/utils";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 
 import { OctaDahlia } from "../typechain/OctaDahlia";
-import { createUniswap } from './helpers'
+import { createUniswap, hhImpersonate, hhSetBalance } from './helpers'
 import { ERC20, ERC20Test, IUniswapV2Factory, IUniswapV2Pair, IUniswapV2Router02, LiquidityLockedERC20 } from "../typechain";
-
-
-
-function hhSetBalance(address: string, balance: string) {
-    return network.provider.send("hardhat_setBalance", [
-        address,
-        balance,
-    ]);
-}
-
-/**
- * Impersonate an Account
- * @param signer Account to Impersonate
- * @param callback Action during impersonation
- */
-async function hhImpersonate(address: string, callback: (signer: SignerWithAddress) => Promise<any>) {
-    // Set Request
-    await network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [address],
-    });
-
-    let res = await callback(await ethers.getSigner(address))
-
-    // End Request
-    await network.provider.request({
-        method: "hardhat_stopImpersonatingAccount",
-        params: [address],
-    });
-
-    return res;
-}
 
 describe("OctaDahlia", async function () {
 
@@ -434,33 +402,83 @@ describe("OctaDahlia", async function () {
 
     describe('alignPrices()', function () {
 
-        function getAmountOut(amountIn: number, tokenPairBalance: number, octoPairBalance: number): number {
-            let amountInWithFee = amountIn * 997;
-            let numerator = amountInWithFee * tokenPairBalance;
-            let denominator = octoPairBalance * 1000 + amountInWithFee;
-            return Math.floor(numerator / denominator)
+        function getAmountOut(amountIn: BigNumber, octoPairBalance: BigNumber, tokenPairBalance: BigNumber): BigNumber {
+            let amountInWithFee = amountIn.mul(997);
+            let numerator = amountInWithFee.mul(tokenPairBalance);
+            let denominator = octoPairBalance.mul(1000).add(amountInWithFee);
+            return numerator.div(denominator)
         }
 
-        it.skip('should align price', async function () {
+
+        it('should align price', async function () {
             let mge = users[2]
             let rift = owner;
-            let RIFT_OCTO_BALANCE = 10;
-            let UNI_PAIR_BALANCE = 100;
-            let UNI_OCTO_BALANCE = 100;
+            let provider = users[3];
+            let RIFT_BALANCE = utils.parseEther('1');
+            let A_PAIR_BALANCE = utils.parseEther('100');
+            let OCTO_PAIR_BALANCE = utils.parseEther('100');
+            let PROVIDER_BALANCE = A_PAIR_BALANCE.add(OCTO_PAIR_BALANCE)
 
-            await octaDahlia.connect(owner).setUp(pair_octo_A.address, users[0].address, users[1].address, mge.address, false, 0, 0)
+            await octaDahlia.connect(rift).setUp(pair_octo_A.address, users[0].address, users[1].address, mge.address, false, 0, 0)
 
-            // Set Rift and Token Balance
-            await octaDahlia.connect(rift).balanceAdjustment(true, RIFT_OCTO_BALANCE, rift.address)
-            await octaDahlia.connect(rift).balanceAdjustment(true, RIFT_OCTO_BALANCE, rift.address)
-            await octaDahlia.connect(rift).balanceAdjustment(true, UNI_OCTO_BALANCE, pair_octo_A.address,)
+            // Set Rift and Pair Balance
+            await octaDahlia.connect(rift).balanceAdjustment(true, PROVIDER_BALANCE, provider.address)
+            await octaDahlia.connect(rift).balanceAdjustment(true, RIFT_BALANCE, rift.address)
+            await octaDahlia.connect(rift).balanceAdjustment(true, OCTO_PAIR_BALANCE, pair_octo_A.address,)
 
-            await tokenA.connect(owner).transfer(pair_octo_A.address, UNI_PAIR_BALANCE)
+            await tokenA.testMint(provider.address, PROVIDER_BALANCE)
+            await tokenA.testMint(rift.address, RIFT_BALANCE)
+            await tokenA.testMint(pair_octo_A.address, A_PAIR_BALANCE)
 
-            ///Revert
-            await expect(octaDahlia.connect(mge).alignPrices()).to.not.be.reverted
+            await octaDahlia.connect(rift).approve(uniswap.router.address, constants.MaxUint256)
+            await tokenA.connect(rift).approve(uniswap.router.address, constants.MaxUint256)
+            await tokenB.connect(rift).approve(uniswap.router.address, constants.MaxUint256)
+            await tokenA.connect(provider).approve(uniswap.router.address, constants.MaxUint256)
+            await octaDahlia.connect(provider).approve(uniswap.router.address, constants.MaxUint256)
 
-            await expect(octaDahlia.connect(rift).alignPrices()).to.not.be.reverted
+            let amt = utils.parseEther('20')
+            await uniswap.router
+                .connect(provider)
+                .addLiquidity(octaDahlia.address, tokenA.address, amt, amt, amt, amt, provider.address, 2e9)
+
+            // Get Initial Reserve State
+            let [octo_reserve, a_reserve, timestamp] = (await pair_octo_A.getReserves())
+
+            // Get Initial Balance State
+            // NOTE: There is a stark discrepency between the reserve and actual token balances
+            let pair_balance = {
+                A: await tokenA.balanceOf(pair_octo_A.address),
+                octa: await octaDahlia.balanceOf(pair_octo_A.address)
+            }
+            let rift_balance = {
+                A: await tokenA.balanceOf(rift.address),
+                octa: await octaDahlia.balanceOf(rift.address)
+            }
+
+            // #alignPrices() State Changes: 
+            // Rift Balance,
+            // MGE Token A Balance
+            // Pair Octo Balance
+
+            // Check Result
+            let res_getAmountOut = await octaDahlia.callStatic.alignPrices()
+            expect(res_getAmountOut.toString()).to.equal(getAmountOut(rift_balance.octa, pair_balance.octa, pair_balance.A).toString())
+
+            // Expect Pair balance to increase
+            // Total Supply is Greater
+            let totalSupply = await octaDahlia.totalSupply()
+            let expected_pair_balance = totalSupply.sub(pair_balance.octa.add(rift_balance.octa))
+
+            // Run Call
+            await octaDahlia.alignPrices()
+
+            // Expect rift balance to be zero
+            let new_rift_balance_octa = await octaDahlia.balanceOf(rift.address)
+            expect(new_rift_balance_octa).to.equal(utils.parseEther('0'))
+            
+            // Expect new pair balance = total supply - pair balance
+            let new_pair_balance_octa = await octaDahlia.balanceOf(pair_octo_A.address)
+            expect(new_pair_balance_octa.toString()).to.equal(expected_pair_balance.toString())
 
         })
     })
