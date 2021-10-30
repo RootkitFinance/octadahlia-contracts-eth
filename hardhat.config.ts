@@ -16,6 +16,7 @@ const config: HardhatUserConfig =  {
       accounts: {
         accountsBalance: "100000000000000000000000"
       },
+      allowUnlimitedContractSize: true,
       chainId: 1
     }
   }

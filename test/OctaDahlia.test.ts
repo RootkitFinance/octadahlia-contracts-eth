@@ -1,13 +1,10 @@
 import { ethers } from "hardhat";
 import { utils, constants, Contract, BigNumber } from "ethers";
-import { expect, util } from "chai";
-import { parseEther } from "ethers/lib/utils";
+import { expect } from "chai";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
-
-import { OctaDahlia } from "../typechain/OctaDahlia";
 import { createUniswap, hhImpersonate, hhSetBalance } from './helpers'
-import { ERC20, ERC20Test, IUniswapV2Factory, IUniswapV2Pair, IUniswapV2Router02, LiquidityLockedERC20 } from "../typechain";
+import { OctaDahlia, ERC20, ERC20Test, IUniswapV2Factory, IUniswapV2Pair, IUniswapV2Router02, LiquidityLockedERC20 } from "../typechain";
 
 describe("OctaDahlia", async function () {
 
@@ -22,7 +19,7 @@ describe("OctaDahlia", async function () {
         router: IUniswapV2Router02;
         factory: IUniswapV2Factory;
         weth: ERC20;
-        pairFor: (address: string) => IUniswapV2Pair,
+        pairFor: (address: string) => IUniswapV2Pair & ERC20,
         UniswapV2PairJson: { abi: any, bytecode: any };
         UniswapV2Router02Json: { abi: any, bytecode: any }
     };

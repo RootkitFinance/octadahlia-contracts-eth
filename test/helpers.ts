@@ -8,7 +8,7 @@ import UniswapV2FactoryJson from '../contracts/json/UniswapV2Factory.json';
 import UniswapV2Router02Json from '../contracts/json/UniswapV2Router02.json';
 import UniswapV2LibraryJson from '../contracts/json/UniswapV2Library.json';
 
-import { IUniswapV2Router02, IUniswapV2Factory, IUniswapV2Router01, IUniswapV2Pair } from '../typechain'
+import { IUniswapV2Router02, IUniswapV2Factory, IUniswapV2Router01, IUniswapV2Pair, ERC20 } from '../typechain'
 
 
 /**
@@ -60,7 +60,7 @@ export async function createUniswap(owner: SignerWithAddress) {
         router,
         library,
         weth,
-        pairFor: (address: string) => new ethers.Contract(address, UniswapV2PairJson.abi, owner) as IUniswapV2Pair,
+        pairFor: (address: string) => new ethers.Contract(address, UniswapV2PairJson.abi, owner) as IUniswapV2Pair & ERC20,
         UniswapV2PairJson,
         UniswapV2Router02Json,
         UniswapV2FactoryJson
