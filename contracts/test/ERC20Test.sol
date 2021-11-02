@@ -3,8 +3,9 @@ pragma solidity ^0.7.6;
 
 import "../SafeSubtraction.sol";
 import "../Interfaces/IERC20.sol"; 
+import "../Interfaces/IWETH.sol";
 
-contract ERC20Test is IERC20 {
+contract ERC20Test is IERC20, IWETH {
 
     using SafeSubtraction for uint256;
 
@@ -25,6 +26,10 @@ contract ERC20Test is IERC20 {
 
     function testMint(address account, uint256 amount) public {
         _mint(account, amount);
+    }
+
+    function deposit() external payable override {
+        _mint(msg.sender, msg.value);
     }
 
     function balanceOf(address account) public virtual override view returns (uint256) { return _balanceOf[account]; }
