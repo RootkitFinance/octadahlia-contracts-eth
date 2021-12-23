@@ -2,7 +2,7 @@
 pragma solidity ^0.7.6;
 
 import "./SafeSubtraction.sol";
-import "./Interfaces/IERC20.sol"; 
+import "./IERC20.sol"; 
 
 abstract contract ERC20 is IERC20 {
 

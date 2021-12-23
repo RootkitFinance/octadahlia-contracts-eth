@@ -10,6 +10,7 @@ interface IUniswapV2Pair {
     function skim(address to) external;
     function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external;
     function balanceOf(address _account) external view returns (uint256);
+    function totalSupply() external view returns (uint256);
     function transfer(address _recipient, uint256 _amount) external returns (bool);
     function approve(address _spender, uint256 _amount) external returns (bool);
 }

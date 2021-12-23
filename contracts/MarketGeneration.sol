@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: I-N-N-N-NFINITY!!!
 pragma solidity ^0.7.6;
 
-import "./Interfaces/IWETH.sol";
-import "./Interfaces/IERC20.sol";
-import "./Interfaces/ITimeRift.sol";
+import "./IWETH.sol";
+import "./IERC20.sol";
+import "./ITimeRift.sol";
 import "./SafeSubtraction.sol";
 
 contract MarketGeneration {

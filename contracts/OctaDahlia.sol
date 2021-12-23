@@ -3,12 +3,11 @@ pragma solidity ^0.7.6;
 
 import "./SafeSubtraction.sol";
 import "./MultiOwned.sol";
-import "./LiquidityLockedERC20.sol";
-import "./Interfaces/IERC20.sol";
-import "./Interfaces/IUniswapV2Pair.sol";
-import "./Interfaces/IOctaDahlia.sol"; 
+import "./ERC20.sol";
+import "./IUniswapV2Pair.sol";
+import "./IOctaDahlia.sol"; 
 
-contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
+contract OctaDahlia is ERC20, MultiOwned, IOctaDahlia {
 
     using SafeSubtraction for uint256;
 
@@ -20,6 +19,13 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
 
     uint256 public burnRate;
     uint256 public maxBuyPercent;
+
+    // to prevent liq removal
+    uint256 public lpTotalSupply;
+
+    // for Rootflection
+    uint256 public totalPaid;
+    mapping (address => uint256) public paid;
 
     constructor() {
         rift = msg.sender; // remove if not launched by the Time Rift Contract, gives mint power
@@ -37,13 +43,11 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
 
     function alignPrices() public virtual override returns (uint256){
         require (msg.sender == rift || msg.sender == mge);
-        liquidityPairLocked[pair] = false;
-        uint256 pendingFees = _balanceOf[rift];
-
+        uint256 pendingFees = _balanceOf[rift] - (_balanceOf[rift] * burnRate / 10000);
         uint256 out1 = getAmountOut(pendingFees);
         uint256 out0 = 0;
 
-        _burn(rift, pendingFees);
+        _burn(rift, _balanceOf[rift]);
         _mint(address(pair), pendingFees);
         if (!isToken0) {
             out0 = out1;
@@ -61,7 +65,6 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
             _burn(address(pair), (pairBalance - neededInPool));
         }
         pair.sync();
-        liquidityPairLocked[pair] = true;
         return isToken0 ? out1 : out0;
     }
  
@@ -79,9 +82,28 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
         setInitialOwners(owner1, dev6, dev9);
     }
 
-    function _transfer(address sender, address recipient, uint256 amount) internal override virtual {       
-        (uint256 dynamicBurnModifier, bool poolPriceHigher) = dynamicBurnRate();
+    function pendingReward(address account) public view returns (uint256) {
+        uint256 accountRewards = (_balanceOf[address(this)] + totalPaid).mul(_balanceOf[account]).mul(1e18).div(totalSupply - _balanceOf[address(pair)]).div(1e18);
+        uint256 alreadyPaid = paid[account];
+        return accountRewards > alreadyPaid ? accountRewards - alreadyPaid : 0;
+    }
+
+        function balanceOf(address account) public override view returns (uint256) {
+        return _balanceOf[account] + pendingReward(account);
+    }
+
+    function _transfer(address sender, address recipient, uint256 amount) internal override virtual {
+        uint256 ROOTflection = pendingReward(sender);
         bool buy = sender == address(pair);
+        if (ROOTflection > 0 && !buy) {
+            _balanceOf[address(this)] -= ROOTflection;
+            _balanceOf[address(this)] += ROOTflection;
+            paid[sender] += rootflection;
+            totalPaid += rootflection;
+            emit Transfer(address(this), sender, ROOTflection);
+        }
+        (uint256 dynamicBurnModifier, bool poolPriceHigher) = dynamicBurnRate();
+        
         bool sell = recipient == address(pair);
 
         if (!buy && !sell) {
@@ -111,15 +133,20 @@ contract OctaDahlia is LiquidityLockedERC20, MultiOwned, IOctaDahlia {
             else {
                 _burnAndFees(recipient, amount, burnRate + dynamicBurnModifier);
             }
-        }       
+        }
+        uint _lpTotalSupply = pair.totalSupply();
+        require (_lpTotalSupply >= lpTotalSupply);
+        lpTotalSupply = _lpTotalSupply;
     }
 
     function _burnAndFees(address account, uint256 amount, uint256 burnPercent) internal returns(uint256) {
         uint256 burnAmount = amount * burnPercent / 10000;
-        uint256 fees = amount * 321 / 10000;
+        uint256 fees = amount * 246 / 10000;
         _balanceOf[account] = _balanceOf[account].sub(burnAmount + fees);
         totalSupply -= burnAmount;
         _balanceOf[rift] += fees;
+        _balanceOf[address(this)] += fees;
+        emit Transfer(address(0), address(this), fees);
         emit Transfer(account, address(0), burnAmount);
         emit Transfer(account, rift, fees);
         return (amount - burnAmount - fees);

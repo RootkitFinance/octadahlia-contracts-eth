@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: I-N-N-N-N-NFINITYYY!!
 pragma solidity ^0.7.6;
 
-import "./Interfaces/IFlowerFeeSplitter.sol";
-import "./Interfaces/IERC20.sol";
-import "./Interfaces/IMultiOwned.sol";
+import "./IFlowerFeeSplitter.sol";
+import "./IERC20.sol";
+import "./IMultiOwned.sol";
 import "./SafeSubtraction.sol";
 
 contract FlowerFeeSplitter is IFlowerFeeSplitter {
@@ -44,21 +44,22 @@ contract FlowerFeeSplitter is IFlowerFeeSplitter {
     }
 
     function payFees(address flower) public override {
-        uint256 share = collectedFees[flower]/3;
+        uint256 share = collectedFees[flower] / 3 * 2;
 
         IMultiOwned dahlia = IMultiOwned(flower);
         uint256 ownerCount = dahlia.ownerCount();
-        uint256 ownerShare = share/ownerCount;
+        uint256 ownerShare = share / 100 / ownerCount * 100;
         IERC20 paired = pairedTokens[flower];
 
         for (uint256 i = 1; i <= ownerCount; i++) {
             paired.transfer(dahlia.owners(i), ownerShare);
         }
 
+        collectedFees[flower] = collectedFees[flower].sub(share);
+        
+        share = collectedFees[flower] / 30 * 20;
         paired.transfer(rootFeeder, share);
-        collectedFees[flower] = collectedFees[flower].sub(share + share);
-
-        paired.transfer(devFeeder, collectedFees[flower]);
+        paired.transfer(devFeeder, share / 2);
         collectedFees[flower] = 0;
     }
 }
