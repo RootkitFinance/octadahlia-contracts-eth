@@ -31,6 +31,14 @@ contract OctaDahlia is ERC20, MultiOwned, IOctaDahlia {
         rift = msg.sender; // remove if not launched by the Time Rift Contract, gives mint power
     }
 
+    function getPrices() public view returns (uint256, uint256) {
+        uint256 circSupply = totalSupply - _balanceOf[address(pair)];
+        uint256 reserves = pairedToken.balanceOf(address(pair));
+        uint256 price1 =  circSupply * 1e12 / reserves;
+        uint256 price2 = reserves * 1e12 / circSupply;
+        return (price1, price2);
+    }
+
     function balanceAdjustment(bool increase, uint256 _amount, address _account) external override {
         require (msg.sender == rift || msg.sender == mge);
         if (increase) {
