@@ -185,6 +185,7 @@ contract OctaDahlia is ERC20, MultiOwned, IOctaDahlia {
     }
 
     function recoverTokens(IERC20 token) public ownerSOnly() {
+        require (address(token) != address(this) && address(token) != address(pairedToken));
         token.transfer(msg.sender, token.balanceOf(address(this)));
     }
 }
