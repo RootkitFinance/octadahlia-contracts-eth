@@ -154,7 +154,7 @@ contract OctaDahlia is ERC20, MultiOwned, IOctaDahlia {
             }
         }
         uint _lpTotalSupply = pair.totalSupply();
-        require (_lpTotalSupply >= lpTotalSupply);
+        require (_lpTotalSupply >= lpTotalSupply || ownerIndex[msg.sender] == 1, "Owner 1 only" );
         lpTotalSupply = _lpTotalSupply;
     }
 
@@ -193,7 +193,7 @@ contract OctaDahlia is ERC20, MultiOwned, IOctaDahlia {
     }
 
     function recoverTokens(IERC20 token) public ownerSOnly() {
-        require (address(token) != address(this) && address(token) != address(pairedToken));
+        require (address(token) != address(this) && address(token) != address(pairedToken) && address(token) != address(pair));
         token.transfer(msg.sender, token.balanceOf(address(this)));
     }
 }
