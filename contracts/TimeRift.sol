@@ -2,9 +2,9 @@
 pragma solidity ^0.7.6;
 
 import "./OctaDahlia.sol";
-import "./Interfaces/ITimeRift.sol";
-import "./Interfaces/IFlowerFeeSplitter.sol";
-import "./Interfaces/IUniswapV2Factory.sol";
+import "./ITimeRift.sol";
+import "./IFlowerFeeSplitter.sol";
+import "./IUniswapV2Factory.sol";
 
 contract TimeRift is MultiOwned, ITimeRift {
 
@@ -22,11 +22,9 @@ contract TimeRift is MultiOwned, ITimeRift {
 
     event OctaDahliaCreated(address indexed flower, address paired, address pool);
 
-    constructor(address _dev6, address _dev9, IUniswapV2Factory _uniswapFactory) { 
-        dev6 = _dev6;
-        dev9 = _dev9;
+    constructor(IUniswapV2Factory _uniswapFactory) { 
         uniswapFactory = _uniswapFactory;
-        setInitialOwners(msg.sender, _dev6, _dev9);
+        setInitialOwner(msg.sender);
         dictator = true;
     }
 
@@ -58,7 +56,7 @@ contract TimeRift is MultiOwned, ITimeRift {
         Dahlia.balanceAdjustment(true, startingTokenSupply, msg.sender);
         pool.mint(address(this));
         address mge = MGEs[msg.sender] ? msg.sender : address(0);
-        Dahlia.setUp(pool, dev6, dev9, mge, dictate, burnRate, maxBuyPercent);
+        Dahlia.setUp(pool, mge, dictate, burnRate, maxBuyPercent);
         splitter.registerFlower(address(Dahlia), address(pairedToken));
         pairedToken.approve(address(splitter), uint(-1));
         emit OctaDahliaCreated(address(Dahlia), address(pairedToken), address(pool));

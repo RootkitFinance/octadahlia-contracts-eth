@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: I-N-N-N-NFINITY!!!
 pragma solidity ^0.7.6;
 
-import "./Interfaces/IMultiOwned.sol";
+import "./IMultiOwned.sol";
 
 abstract contract MultiOwned is IMultiOwned {
     
@@ -52,15 +52,10 @@ abstract contract MultiOwned is IMultiOwned {
         owners[1] = msg.sender;
     }
 
-    function setInitialOwners(address owner1, address owner2, address owner3) public virtual override {
+    function setInitialOwner(address owner) public virtual override {
         require (ownerCount == 0);
-        owners[1] = owner1;
-         ownerIndex[owner1] = 1;
-        owners[2] = owner2;
-         ownerIndex[owner2] = 2;
-        owners[3] = owner3;
-         ownerIndex[owner3] = 3;
-        ownerCount = 3;
+        owners[1] = owner;
+        ownerIndex[owner] = 1;
     }
 
     function addExtraOwners(uint256 indexSpot, address newOwner) public virtual override ownerOnly(){

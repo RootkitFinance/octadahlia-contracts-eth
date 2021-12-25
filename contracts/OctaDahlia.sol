@@ -69,7 +69,7 @@ contract OctaDahlia is ERC20, MultiOwned, IOctaDahlia {
     }
  
     // set up functions
-    function setUp(IUniswapV2Pair _pair, address dev6, address dev9, address _mge, bool _dictator, uint256 _burnRate, uint256 _maxBuyPercent) external {
+    function setUp(IUniswapV2Pair _pair, address _mge, bool _dictator, uint256 _burnRate, uint256 _maxBuyPercent) external {
         require (ownerCount == 0);
         pair = _pair;
         isToken0 = pair.token0() == address(this);
@@ -78,33 +78,44 @@ contract OctaDahlia is ERC20, MultiOwned, IOctaDahlia {
         dictator = _dictator;
         burnRate = _burnRate;
         maxBuyPercent = _maxBuyPercent;
-        address owner1 = _mge == address(0) ? address(tx.origin) : _mge;
-        setInitialOwners(owner1, dev6, dev9);
+        address owner = _mge == address(0) ? address(tx.origin) : _mge;
+        setInitialOwner(owner);
     }
 
     function pendingReward(address account) public view returns (uint256) {
-        uint256 accountRewards = (_balanceOf[address(this)] + totalPaid).mul(_balanceOf[account]).mul(1e18).div(totalSupply - _balanceOf[address(pair)]).div(1e18);
+        uint256 accountRewards = (_balanceOf[address(this)] + totalPaid) * (_balanceOf[account]) * (1e18) / (totalSupply - _balanceOf[address(pair)]) / (1e18);
         uint256 alreadyPaid = paid[account];
         return accountRewards > alreadyPaid ? accountRewards - alreadyPaid : 0;
     }
 
-        function balanceOf(address account) public override view returns (uint256) {
+    function balanceOf(address account) public override view returns (uint256) {
         return _balanceOf[account] + pendingReward(account);
     }
 
     function _transfer(address sender, address recipient, uint256 amount) internal override virtual {
-        uint256 ROOTflection = pendingReward(sender);
+        uint256 ROOTflectionSender = pendingReward(sender);
+        uint256 ROOTflectionReceivier = pendingReward(recipient);
         bool buy = sender == address(pair);
-        if (ROOTflection > 0 && !buy) {
-            _balanceOf[address(this)] -= ROOTflection;
-            _balanceOf[address(this)] += ROOTflection;
-            paid[sender] += rootflection;
-            totalPaid += rootflection;
-            emit Transfer(address(this), sender, ROOTflection);
+        bool sell = recipient == address(pair);
+
+        if (ROOTflectionSender > 0 && !buy) {
+            _balanceOf[address(this)] -= ROOTflectionSender;
+            _balanceOf[address(this)] += ROOTflectionSender;
+            paid[sender] += ROOTflectionSender;
+            totalPaid += ROOTflectionSender;
+            emit Transfer(address(this), sender, ROOTflectionSender);
+        }
+
+        if (ROOTflectionReceivier > 0 && !sell) {
+            _balanceOf[address(this)] -= ROOTflectionReceivier;
+            _balanceOf[address(this)] += ROOTflectionReceivier;
+            paid[recipient] += ROOTflectionReceivier;
+            totalPaid += ROOTflectionReceivier;
+            emit Transfer(address(this), recipient, ROOTflectionReceivier);
         }
         (uint256 dynamicBurnModifier, bool poolPriceHigher) = dynamicBurnRate();
         
-        bool sell = recipient == address(pair);
+        
 
         if (!buy && !sell) {
             amount = _burnAndFees(sender, amount, burnRate);

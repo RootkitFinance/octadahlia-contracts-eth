@@ -57,9 +57,9 @@ contract FlowerFeeSplitter is IFlowerFeeSplitter {
 
         collectedFees[flower] = collectedFees[flower].sub(share);
         
-        share = collectedFees[flower] / 30 * 20;
-        paired.transfer(rootFeeder, share);
-        paired.transfer(devFeeder, share / 2);
+        share = collectedFees[flower] / 30 * 10;
+        paired.transfer(rootFeeder, share * 2);
+        paired.transfer(devFeeder, share);
         collectedFees[flower] = 0;
     }
 }
