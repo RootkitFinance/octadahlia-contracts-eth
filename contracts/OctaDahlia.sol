@@ -100,7 +100,7 @@ contract OctaDahlia is ERC20, MultiOwned, IOctaDahlia {
 
         if (ROOTflectionSender > 0 && !buy) {
             _balanceOf[address(this)] -= ROOTflectionSender;
-            _balanceOf[address(this)] += ROOTflectionSender;
+            _balanceOf[sender] += ROOTflectionSender;
             paid[sender] += ROOTflectionSender;
             totalPaid += ROOTflectionSender;
             emit Transfer(address(this), sender, ROOTflectionSender);
@@ -108,7 +108,7 @@ contract OctaDahlia is ERC20, MultiOwned, IOctaDahlia {
 
         if (ROOTflectionReceivier > 0 && !sell) {
             _balanceOf[address(this)] -= ROOTflectionReceivier;
-            _balanceOf[address(this)] += ROOTflectionReceivier;
+            _balanceOf[recipient] += ROOTflectionReceivier;
             paid[recipient] += ROOTflectionReceivier;
             totalPaid += ROOTflectionReceivier;
             emit Transfer(address(this), recipient, ROOTflectionReceivier);
@@ -154,11 +154,11 @@ contract OctaDahlia is ERC20, MultiOwned, IOctaDahlia {
         uint256 burnAmount = amount * burnPercent / 10000;
         uint256 fees = amount * 246 / 10000;
         _balanceOf[account] = _balanceOf[account].sub(burnAmount + fees);
-        totalSupply -= burnAmount;
+        totalSupply = totalSupply - burnAmount + fees;
         _balanceOf[rift] += fees;
         _balanceOf[address(this)] += fees;
-        emit Transfer(address(0), address(this), fees);
-        emit Transfer(account, address(0), burnAmount);
+        emit Transfer(account, address(this), fees);
+        emit Transfer(account, address(0), burnAmount - fees);
         emit Transfer(account, rift, fees);
         return (amount - burnAmount - fees);
     }
