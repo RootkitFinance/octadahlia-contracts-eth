@@ -8,8 +8,6 @@ import "./IUniswapV2Factory.sol";
 
 contract TimeRift is MultiOwned, ITimeRift {
 
-    address private dev6;
-    address private dev9;
     IUniswapV2Factory public uniswapFactory;
     IFlowerFeeSplitter public splitter;
     uint256 public dabPercent;

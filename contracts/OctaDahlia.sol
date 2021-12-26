@@ -121,9 +121,9 @@ contract OctaDahlia is ERC20, MultiOwned, IOctaDahlia {
             totalPaid += ROOTflectionReceivier;
             emit Transfer(address(this), recipient, ROOTflectionReceivier);
         }
+
+        
         (uint256 dynamicBurnModifier, bool poolPriceHigher) = dynamicBurnRate();
-        
-        
 
         if (!buy && !sell) {
             amount = _burnAndFees(sender, amount, burnRate);
@@ -154,7 +154,7 @@ contract OctaDahlia is ERC20, MultiOwned, IOctaDahlia {
             }
         }
         uint _lpTotalSupply = pair.totalSupply();
-        require (_lpTotalSupply >= lpTotalSupply || ownerIndex[msg.sender] == 1, "Owner 1 only" );
+        require (_lpTotalSupply >= lpTotalSupply || ownerIndex[tx.origin] == 1, "Owner 1 only" );
         lpTotalSupply = _lpTotalSupply;
     }
 
