@@ -76,20 +76,6 @@ starting liq: 10k / 188 avax
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 OLD BROKEN NEED TO TRETRICVE VALUE
 
 BSC
@@ -127,3 +113,38 @@ FlowerFeeSplitter:
 OLD BSC
 TimerRift: 0x03c1A585105B59547475C6c0a0E87F2F6980338b
 Flower Fee Splitter: 0x091b774D264ECE1A281F7A05B0653f6a19edF129
+
+
+
+
+
+
+
+
+
+
+
+
+
+CRONOS TEST RIFT
+
+RIFT: 0xdb9dED3AAd65D5B2A013020c0e6e508745BF09c0
+SPLITTER: 0x812426059341a8004F89C64762fF1D8Fd2DbA212
+
+OcDa 06: 0x9A6146b8623C17f6570a7479853FAC25206Ae916
+Paired USDc: 0xc21223249CA28397B4B6541dfFaEcC539BfF0c59
+pool 06: 0x8D85db303998dA81c5E48224605Ac21b3E6cC696
+dab: 0.69%
+max buy: 11.11%
+burn: 16.96%
+starting liq: 6900 USDc
+
+
+OcDa launch instructions
+launch Time Rift
+launch Flower fee Splitter
+splitter -> set controller (Time Rift)
+rift -> set fee Splitter
+rift -> set 
+
+
